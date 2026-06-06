@@ -32,19 +32,4 @@ public class OnboardingProcessEntity {
     private Instant createdAt;
 
     private Instant updatedAt;
-
-    public static OnboardingProcessEntity create(
-            String username,
-            String registrationId,
-            OnboardingState currentState,
-            Instant createdAt
-    ) {
-        return OnboardingProcessEntity.builder()
-                .username(username)
-                .registrationId(registrationId)
-                .currentState(currentState)
-                .createdAt(createdAt)
-                .updatedAt(createdAt)
-                .build();
-    }
 }

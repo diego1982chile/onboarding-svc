@@ -49,12 +49,13 @@ public class DefaultOnboardingEngine implements OnboardingEngine {
 
         OnboardingState nextState = facts.get("nextState");
         if (process == null) {
-            repository.save(OnboardingProcessEntity.create(
-                    event.username(),
-                    event.registrationId(),
-                    nextState,
-                    event.occurredAt()
-            ));
+            repository.save(OnboardingProcessEntity.builder()
+                    .username(event.username())
+                    .registrationId(event.registrationId())
+                    .currentState(nextState)
+                    .createdAt(event.occurredAt())
+                    .updatedAt(event.occurredAt())
+                    .build());
         } else {
             process.setCurrentState(nextState);
             process.setUpdatedAt(Instant.now());
