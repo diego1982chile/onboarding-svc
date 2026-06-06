@@ -270,6 +270,12 @@ Next checkpoint:
     onboarding entities, rules, repositories, endpoints, and tables from
     `token-svc`.
 
+Identity events from `token-svc` must be selective. The feed is not a general
+user audit log. Only explicit user-facing onboarding flows should append
+events, initially public registration (`USER_REGISTERED`) and user email
+confirmation (`EMAIL_VERIFIED`). Administrative user changes must not emit
+onboarding identity events by default.
+
 ## Current Local Event Infrastructure
 
 Local SNS/SQS provisioning is available through:
