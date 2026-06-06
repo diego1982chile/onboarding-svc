@@ -48,6 +48,13 @@ KYC is expected to be an external provider integration owned by
 translated inside `onboarding-svc` into onboarding events such as
 `KYC_APPROVED` or `KYC_REJECTED`.
 
+Subscription plan and billing ownership is separate. `onboarding-svc` may own a
+temporary plan-selection catalog while the product is simple, but payment
+provider callbacks should enter the service that owns subscriptions. If a
+future `subscription-svc` exists, `onboarding-svc` should consume subscription
+outcomes from that service rather than handling payment provider webhooks
+directly.
+
 Camel Quarkus is not part of the initial migration. It should be reconsidered
 when KYC, Stripe, or other integrations create multiple routes that benefit
 from shared transformation, routing, or error-handling behavior.
@@ -136,13 +143,16 @@ feed/EventFeedPoller
 webhook/KycWebhookResource
   -> KycEventHandler
 
-webhook/BillingWebhookResource
-  -> BillingEventHandler
+feed/EventFeedPoller
+  -> SubscriptionEventFeedClient
+  -> SubscriptionEventHandler
 ```
 
-KYC and billing providers are expected to push callbacks/webhooks to
-`onboarding-svc`, so they should not require their own feed pollers unless a
-specific provider lacks webhook support.
+KYC provider callbacks are expected to enter `onboarding-svc` directly. Billing
+provider callbacks should enter whichever service owns subscriptions. If that
+is a future `subscription-svc`, `onboarding-svc` can reuse the generic
+poll/cursor infrastructure with a subscription-specific feed client and
+handler, without duplicating the polling stack.
 
 ## Migration Order
 
