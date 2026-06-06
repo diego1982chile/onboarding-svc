@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.resources;
+package cl.dsoto.onboarding.webservice.impl;
 
 import cl.dsoto.onboarding.model.OnboardingEvent;
 import cl.dsoto.onboarding.repositories.OnboardingProcessRepository;
@@ -16,7 +16,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 
 @QuarkusTest
-class OnboardingResourceTest {
+class DefaultOnboardingWebServiceTest {
 
     @Inject
     OnboardingEngine onboardingEngine;

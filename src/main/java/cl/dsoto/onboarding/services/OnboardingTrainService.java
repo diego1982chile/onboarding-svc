@@ -1,14 +1,14 @@
 package cl.dsoto.onboarding.services;
 
-import cl.dsoto.onboarding.resources.dto.OnboardingTrainView;
+import cl.dsoto.onboarding.webservice.resources.OnboardingTrainResource;
 
 import java.util.Optional;
 
 public interface OnboardingTrainService {
 
-    OnboardingTrainView getPublicTrain();
+    OnboardingTrainResource getPublicTrain();
 
-    OnboardingTrainView getAuthenticatedTrain(String username);
+    OnboardingTrainResource getAuthenticatedTrain(String username);
 
-    Optional<OnboardingTrainView> getRegistrationStatus(String registrationId);
+    Optional<OnboardingTrainResource> getRegistrationStatus(String registrationId);
 }

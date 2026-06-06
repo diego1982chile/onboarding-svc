@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.resources.dto;
+package cl.dsoto.onboarding.webservice.resources;
 
 public enum OnboardingTrainStepStatus {
     COMPLETED,

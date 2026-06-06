@@ -1,8 +1,9 @@
-package cl.dsoto.onboarding.resources;
+package cl.dsoto.onboarding.webservice.impl;
 
-import cl.dsoto.onboarding.resources.dto.RegistrationStatusResponse;
-import cl.dsoto.onboarding.resources.dto.OnboardingTrainView;
 import cl.dsoto.onboarding.services.OnboardingTrainService;
+import cl.dsoto.onboarding.webservice.OnboardingWebService;
+import cl.dsoto.onboarding.webservice.resources.OnboardingTrainResource;
+import cl.dsoto.onboarding.webservice.resources.RegistrationStatusResource;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -17,30 +18,32 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 @Path("/api/onboarding")
 @Produces(MediaType.APPLICATION_JSON)
-public class OnboardingResource {
+public class DefaultOnboardingWebService implements OnboardingWebService {
 
     private final OnboardingTrainService trainService;
 
     @Inject
     JsonWebToken jwt;
 
-    public OnboardingResource(OnboardingTrainService trainService) {
+    public DefaultOnboardingWebService(OnboardingTrainService trainService) {
         this.trainService = trainService;
     }
 
     @GET
     @Path("/public/train")
     @PermitAll
-    public OnboardingTrainView getPublicTrain() {
+    @Override
+    public OnboardingTrainResource getPublicTrain() {
         return trainService.getPublicTrain();
     }
 
     @GET
     @Path("/public/{registrationId}/status")
     @PermitAll
+    @Override
     public Response getRegistrationStatus(@PathParam("registrationId") @NotBlank String registrationId) {
         return trainService.getRegistrationStatus(registrationId)
-                .map(RegistrationStatusResponse::new)
+                .map(RegistrationStatusResource::new)
                 .map(status -> Response.ok(status).build())
                 .orElseGet(() -> Response.status(Response.Status.NOT_FOUND).build());
     }
@@ -48,8 +51,9 @@ public class OnboardingResource {
     @GET
     @Path("/me/train")
     @RolesAllowed({"USER", "ADMIN"})
+    @Override
     public Response getMyTrain() {
-        OnboardingTrainView train = trainService.getAuthenticatedTrain(jwt.getSubject());
+        OnboardingTrainResource train = trainService.getAuthenticatedTrain(jwt.getSubject());
         if (train == null) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }

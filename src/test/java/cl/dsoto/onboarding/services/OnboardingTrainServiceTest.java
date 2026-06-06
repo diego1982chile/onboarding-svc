@@ -1,8 +1,8 @@
 package cl.dsoto.onboarding.services;
 
-import cl.dsoto.onboarding.resources.dto.OnboardingTrainStep;
-import cl.dsoto.onboarding.resources.dto.OnboardingTrainStepStatus;
-import cl.dsoto.onboarding.resources.dto.OnboardingTrainView;
+import cl.dsoto.onboarding.webservice.resources.OnboardingTrainStep;
+import cl.dsoto.onboarding.webservice.resources.OnboardingTrainStepStatus;
+import cl.dsoto.onboarding.webservice.resources.OnboardingTrainResource;
 import cl.dsoto.onboarding.model.OnboardingEvent;
 import cl.dsoto.onboarding.model.OnboardingState;
 import cl.dsoto.onboarding.repositories.OnboardingProcessRepository;
@@ -36,7 +36,7 @@ class OnboardingTrainServiceTest {
 
     @Test
     void shouldShowPublicRegistrationTrain() {
-        OnboardingTrainView view = trainService.getPublicTrain();
+        OnboardingTrainResource view = trainService.getPublicTrain();
 
         assertThat(view.getUsername(), is((String) null));
         assertThat(view.getCurrentState(), is((OnboardingState) null));
@@ -52,7 +52,7 @@ class OnboardingTrainServiceTest {
 
         onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
 
-        OnboardingTrainView view = trainService.getAuthenticatedTrain(username);
+        OnboardingTrainResource view = trainService.getAuthenticatedTrain(username);
 
         assertThat(view.getCurrentState(), is(OnboardingState.REGISTERED));
         assertThat(view.getCurrentStep(), is(OnboardingTrainStep.REGISTRATION));
@@ -68,7 +68,7 @@ class OnboardingTrainServiceTest {
         onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
         onboardingEngine.applyEvent(OnboardingEvent.emailVerified(username));
 
-        OnboardingTrainView view = trainService.getAuthenticatedTrain(username);
+        OnboardingTrainResource view = trainService.getAuthenticatedTrain(username);
 
         assertThat(view.getCurrentState(), is(OnboardingState.EMAIL_VERIFIED));
         assertThat(view.getCurrentStep(), is(OnboardingTrainStep.IDENTITY_CHECK));
@@ -79,9 +79,9 @@ class OnboardingTrainServiceTest {
 
     @Test
     void shouldReturnNullWhenUserHasNoOnboardingProcess() {
-        OnboardingTrainView view = trainService.getAuthenticatedTrain("missing.user@example.com");
+        OnboardingTrainResource view = trainService.getAuthenticatedTrain("missing.user@example.com");
 
-        assertThat(view, is((OnboardingTrainView) null));
+        assertThat(view, is((OnboardingTrainResource) null));
     }
 
     @Test
@@ -91,7 +91,7 @@ class OnboardingTrainServiceTest {
 
         onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username, registrationId));
 
-        Optional<OnboardingTrainView> view = trainService.getRegistrationStatus(registrationId);
+        Optional<OnboardingTrainResource> view = trainService.getRegistrationStatus(registrationId);
 
         assertThat(view.isPresent(), is(true));
         assertThat(view.orElseThrow().getCurrentStep(), is(OnboardingTrainStep.REGISTRATION));

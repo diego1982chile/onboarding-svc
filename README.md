@@ -3,7 +3,9 @@
 Product onboarding orchestration service built with Quarkus.
 
 See [architecture](docs/architecture.md) and the
-[onboarding train contract](docs/onboarding-train-contract.md).
+[onboarding train contract](docs/onboarding-train-contract.md). Shared package
+and naming rules are documented in
+[service conventions](docs/service-conventions.md).
 
 The planned migration of onboarding state ownership and identity events is
 documented in

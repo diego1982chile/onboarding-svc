@@ -19,7 +19,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Entity
 @Table(name = "ONBOARDING_PROCESS")
-public class OnboardingProcess {
+public class OnboardingProcessEntity {
 
     @Id
     private String username;
@@ -33,13 +33,13 @@ public class OnboardingProcess {
 
     private Instant updatedAt;
 
-    public static OnboardingProcess create(
+    public static OnboardingProcessEntity create(
             String username,
             String registrationId,
             OnboardingState currentState,
             Instant createdAt
     ) {
-        return OnboardingProcess.builder()
+        return OnboardingProcessEntity.builder()
                 .username(username)
                 .registrationId(registrationId)
                 .currentState(currentState)

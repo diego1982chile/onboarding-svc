@@ -19,7 +19,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Entity
 @Table(name = "PROCESSED_IDENTITY_EVENT")
-public class ProcessedIdentityEvent {
+public class ProcessedIdentityEventEntity {
 
     @Id
     private String eventId;
@@ -33,14 +33,14 @@ public class ProcessedIdentityEvent {
 
     private Instant processedAt;
 
-    public static ProcessedIdentityEvent from(
+    public static ProcessedIdentityEventEntity from(
             String eventId,
             OnboardingEventType eventType,
             String subject,
             Instant occurredAt,
             Instant processedAt
     ) {
-        return ProcessedIdentityEvent.builder()
+        return ProcessedIdentityEventEntity.builder()
                 .eventId(eventId)
                 .eventType(eventType)
                 .subject(subject)
