@@ -243,6 +243,33 @@ Next checkpoint:
   identity event log persistence.
 - Expose a cursor-based internal identity event feed from `token-svc`.
 
+## Next Implementation Checklist
+
+1. In `token-svc`, add `IdentityEventLogEntry` persistence:
+   `sequence`, `eventId`, `eventType`, `subject`, `occurredAt`, and optional
+   `registrationId`.
+2. In `token-svc`, add feed response models:
+   `IdentityEventFeedItem` and `IdentityEventFeedPage`.
+3. In `token-svc`, expose
+   `GET /internal/identity-events?after=<cursor>&limit=<n>`.
+4. In `token-svc`, write `USER_REGISTERED` and `EMAIL_VERIFIED` to the event
+   log while keeping the existing local onboarding engine calls temporarily.
+5. In `onboarding-svc`, adjust `IdentityEventHandler` and
+   `IdentityEventMapper` so the HTTP feed path does not depend on
+   `IdentityEventEnvelope`.
+6. In `onboarding-svc`, add local cursor persistence for the
+   `token-svc.identity` feed source.
+7. In `onboarding-svc`, implement `EventFeedPoller` and
+   `TokenIdentityEventFeedClient`.
+8. Validate end-to-end registration and email confirmation through the feed:
+   register in `token-svc`, confirm email, poll from `onboarding-svc`, and
+   verify onboarding state reaches `EMAIL_VERIFIED`.
+9. After the feed path is validated, remove direct onboarding state mutation
+   from `token-svc`.
+10. After `onboarding-svc` fully owns onboarding state, remove transitional
+    onboarding entities, rules, repositories, endpoints, and tables from
+    `token-svc`.
+
 ## Current Local Event Infrastructure
 
 Local SNS/SQS provisioning is available through:
