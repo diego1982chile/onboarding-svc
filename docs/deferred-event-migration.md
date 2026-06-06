@@ -61,7 +61,41 @@ from shared transformation, routing, or error-handling behavior.
 
 ## Event Contract
 
-Events must use a versioned, transport-neutral envelope:
+The immediate HTTP feed contract must model a cursor-based event log, not a
+message-queue envelope.
+
+`token-svc` should expose pages shaped around feed items:
+
+```json
+{
+  "events": [
+    {
+      "sequence": 126,
+      "eventId": "uuid",
+      "eventType": "USER_REGISTERED",
+      "subject": "user@example.com",
+      "occurredAt": "2026-06-03T12:00:00Z",
+      "registrationId": "uuid"
+    }
+  ],
+  "nextCursor": 126
+}
+```
+
+The intended model names for the HTTP feed are:
+
+- `IdentityEventFeedPage`
+- `IdentityEventFeedItem`
+
+`IdentityEventFeedItem.sequence` is the cursor position. `eventId` is still
+required for idempotent processing.
+
+The existing `IdentityEventEnvelope` belongs to the validated SNS/SQS
+prototype. It is not the right central contract for the immediate HTTP feed.
+It may remain as an SQS/future-transport message shape, but the HTTP feed
+should not be forced to wrap events in it.
+
+SQS prototype envelope:
 
 ```json
 {
@@ -106,11 +140,11 @@ Responsibilities:
   and retry behavior. It should stay generic enough to avoid creating one
   poller class per future domain.
 - `TokenIdentityEventFeedClient` owns HTTP calls to `token-svc` and maps the
-  feed response into `IdentityEventEnvelope` values.
+  feed response into `IdentityEventFeedPage` / `IdentityEventFeedItem` values.
 - `IdentityEventHandler` owns application coordination: idempotency by
   `eventId`, mapping the external identity event, and invoking the onboarding
   engine inside the correct transaction boundary.
-- `IdentityEventMapper` converts the external `IdentityEventEnvelope` into the
+- `IdentityEventMapper` converts the external feed item into the
   internal `OnboardingEvent`.
 - `OnboardingEngine` owns only onboarding business rules and state
   transitions. It must not depend on HTTP clients, AWS SDK, SNS, SQS, JSON
@@ -124,10 +158,18 @@ The validated SNS/SQS adapter follows the same boundary:
 
 ```text
 SqsIdentityEventConsumer
+  -> IdentityEventEnvelope
   -> IdentityEventHandler
   -> IdentityEventMapper
   -> OnboardingEngine
 ```
+
+Before implementing the HTTP feed poller, review the current
+`IdentityEventHandler` and `IdentityEventMapper` signatures. They currently
+accept `IdentityEventEnvelope` because the SQS prototype was implemented
+first. For the HTTP feed direction, they should either accept
+`IdentityEventFeedItem` directly or use a neutral application command that both
+feed items and SQS envelopes can map into.
 
 Avoid duplicating the whole polling stack for every future integration. The
 poll/cursor mechanics are generic infrastructure; event contracts and handlers
