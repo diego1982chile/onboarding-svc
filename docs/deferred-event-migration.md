@@ -17,23 +17,36 @@ The existing onboarding state machine in `token-svc` must not be redesigned
 from scratch. It already contains reusable domain events, persistence,
 Easy Rules transitions, train projection logic, and tests.
 
-## Target Architecture
+## Current Direction
 
-When the migration is resumed, identity changes will be distributed
-asynchronously:
+The SNS/SQS path was implemented and smoke-tested locally, but it is not the
+immediate target for the next migration step. For the current product scope, it
+adds more infrastructure than the first identity-only event flow needs.
+
+The immediate target is an incremental HTTP event feed:
 
 ```text
 token-svc
-  -> transactional outbox
-  -> SNS topic: identity-events
-  -> SQS queue: onboarding-identity-events
-  -> onboarding-svc
+  -> identity event log
+  -> GET /internal/identity-events?after=<cursor>&limit=<n>
 
-SQS queue: onboarding-identity-events
-  -> DLQ: onboarding-identity-events-dlq
+onboarding-svc
+  -> polls the identity event feed
+  -> persists its source cursor
+  -> handles each IdentityEventEnvelope through IdentityEventHandler
 ```
 
-Local development will use LocalStack for SNS and SQS.
+The HTTP feed must be cursor-based. `onboarding-svc` must not poll current user
+state or infer changes by comparing snapshots.
+
+The SNS/SQS implementation remains a validated prototype and future option if
+fan-out, durable queueing, DLQ operations, or multiple independent consumers
+justify the extra infrastructure.
+
+KYC is expected to be an external provider integration owned by
+`onboarding-svc`, not by `token-svc`. KYC callbacks/webhooks should be
+translated inside `onboarding-svc` into onboarding events such as
+`KYC_APPROVED` or `KYC_REJECTED`.
 
 Camel Quarkus is not part of the initial migration. It should be reconsidered
 when KYC, Stripe, or other integrations create multiple routes that benefit
@@ -61,16 +74,45 @@ Initial event types:
 
 Future event types may include KYC, profile, plan, and subscription outcomes.
 
-Consumers must be idempotent because standard SNS and SQS delivery can produce
-duplicate messages. Processed `eventId` values must be persisted separately
-from state-transition idempotency.
+Consumers must be idempotent because feed polling can retry pages and future
+queue-based transports can produce duplicate messages. Processed `eventId`
+values must be persisted separately from state-transition idempotency.
 
 ## Consumer Design Pattern
 
-The SQS consumer must be implemented as an infrastructure adapter, not as part
+Event consumption must be implemented as an infrastructure adapter, not as part
 of the onboarding domain model.
 
-The intended internal flow is:
+The intended immediate flow is:
+
+```text
+IdentityEventFeedPoller
+  -> IdentityEventFeedClient
+  -> IdentityEventHandler
+  -> IdentityEventMapper
+  -> OnboardingEngine
+```
+
+Responsibilities:
+
+- `IdentityEventFeedPoller` owns polling cadence, cursor loading, cursor
+  persistence, and retry behavior.
+- `IdentityEventFeedClient` owns HTTP calls to `token-svc` and maps the feed
+  response into `IdentityEventEnvelope` values.
+- `IdentityEventHandler` owns application coordination: idempotency by
+  `eventId`, mapping the external identity event, and invoking the onboarding
+  engine inside the correct transaction boundary.
+- `IdentityEventMapper` converts the external `IdentityEventEnvelope` into the
+  internal `OnboardingEvent`.
+- `OnboardingEngine` owns only onboarding business rules and state
+  transitions. It must not depend on HTTP clients, AWS SDK, SNS, SQS, JSON
+  transport details, cursor handling, or retry behavior.
+
+This keeps the migration close to a small ports-and-adapters design without
+adding unnecessary abstractions. If the transport changes later, only the
+infrastructure adapter should change.
+
+The validated SNS/SQS adapter follows the same boundary:
 
 ```text
 SqsIdentityEventConsumer
@@ -79,41 +121,22 @@ SqsIdentityEventConsumer
   -> OnboardingEngine
 ```
 
-Responsibilities:
-
-- `SqsIdentityEventConsumer` owns AWS/SQS concerns: receiving messages,
-  extracting the SNS payload from the SQS body, acknowledging successful
-  processing by deleting messages, and leaving failed messages available for
-  retry/DLQ handling.
-- `IdentityEventHandler` owns application coordination: idempotency by
-  `eventId`, mapping the external identity event, and invoking the onboarding
-  engine inside the correct transaction boundary.
-- `IdentityEventMapper` converts the external `IdentityEventEnvelope` into the
-  internal `OnboardingEvent`.
-- `OnboardingEngine` owns only onboarding business rules and state
-  transitions. It must not depend on AWS SDK, SNS, SQS, JSON transport details,
-  or queue retry behavior.
-
-This keeps the migration close to a small ports-and-adapters design without
-adding unnecessary abstractions. If the transport changes later, only the
-infrastructure adapter should change.
-
 ## Migration Order
 
 1. Move the onboarding domain model, persistence, Easy Rules engine, train
    projection, and tests from `token-svc` to `onboarding-svc`.
 2. Define and test the versioned external event contract.
-3. Add LocalStack and reproducible SNS, SQS, subscription, and DLQ
-   provisioning.
-4. Add the SQS consumer in `onboarding-svc`.
-5. Add a transactional outbox and SNS publisher in `token-svc`.
-6. Replace local `OnboardingEngine.applyEvent(...)` calls in `token-svc` with
-   outbox events.
-7. Build all onboarding train views from `onboarding-svc` persistence.
-8. Remove onboarding entities, rules, repositories, endpoints, and tables from
+3. Add application-level event handling and idempotency by `eventId`.
+4. Add an identity event log in `token-svc`.
+5. Expose a cursor-based internal identity event feed in `token-svc`.
+6. Add an HTTP feed poller in `onboarding-svc`.
+7. Replace local `OnboardingEngine.applyEvent(...)` calls in `token-svc` with
+   identity event log persistence.
+8. Build all onboarding train views from `onboarding-svc` persistence.
+9. Remove onboarding entities, rules, repositories, endpoints, and tables from
    `token-svc`.
-9. Verify registration, email confirmation, duplicate delivery, retries,
-   service downtime, and DLQ behavior.
+10. Verify registration, email confirmation, duplicate delivery, retries,
+   service downtime, cursor recovery, and idempotency.
 
 ## Current Migration Status
 
@@ -134,14 +157,16 @@ Completed:
 - A local smoke test published sample `USER_REGISTERED` and `EMAIL_VERIFIED`
   events to SNS, consumed them from SQS, and verified the resulting onboarding
   status over HTTP.
+- The SNS/SQS path is now treated as a validated prototype and future option,
+  not the immediate migration target.
 - The test suite passes with 35 tests.
 
 Next checkpoint:
 
-- Add a transactional outbox and SNS publisher in `token-svc`.
+- Add an identity event log in `token-svc`.
 - Replace direct `OnboardingEngine.applyEvent(...)` calls in `token-svc` with
-  outbox event persistence.
-- Publish outbox events to SNS topic `identity-events`.
+  identity event log persistence.
+- Expose a cursor-based internal identity event feed from `token-svc`.
 
 ## Current Local Event Infrastructure
 
@@ -164,11 +189,14 @@ The script provisions:
 
 The following are not implemented yet:
 
-- Transactional outbox publishing.
+- Identity event log in `token-svc`.
+- Cursor-based internal identity event feed in `token-svc`.
+- HTTP feed poller in `onboarding-svc`.
 - End-to-end cross-service event flow from `token-svc`.
+- Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
 - Removal of onboarding code from `token-svc`.
 
-REST service-to-service event delivery is not planned as an intermediate step.
-It would require B2B authentication, retry handling, and availability coupling
-without providing the reliability benefits of SQS.
+Direct REST service-to-service event delivery is not planned. The planned HTTP
+approach is an incremental event feed with cursor and idempotency, not a
+synchronous callback from `token-svc` to `onboarding-svc`.
