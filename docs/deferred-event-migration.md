@@ -86,8 +86,8 @@ of the onboarding domain model.
 The intended immediate flow is:
 
 ```text
-IdentityEventFeedPoller
-  -> IdentityEventFeedClient
+EventFeedPoller
+  -> TokenIdentityEventFeedClient
   -> IdentityEventHandler
   -> IdentityEventMapper
   -> OnboardingEngine
@@ -95,10 +95,11 @@ IdentityEventFeedPoller
 
 Responsibilities:
 
-- `IdentityEventFeedPoller` owns polling cadence, cursor loading, cursor
-  persistence, and retry behavior.
-- `IdentityEventFeedClient` owns HTTP calls to `token-svc` and maps the feed
-  response into `IdentityEventEnvelope` values.
+- `EventFeedPoller` owns polling cadence, cursor loading, cursor persistence,
+  and retry behavior. It should stay generic enough to avoid creating one
+  poller class per future domain.
+- `TokenIdentityEventFeedClient` owns HTTP calls to `token-svc` and maps the
+  feed response into `IdentityEventEnvelope` values.
 - `IdentityEventHandler` owns application coordination: idempotency by
   `eventId`, mapping the external identity event, and invoking the onboarding
   engine inside the correct transaction boundary.
@@ -120,6 +121,28 @@ SqsIdentityEventConsumer
   -> IdentityEventMapper
   -> OnboardingEngine
 ```
+
+Avoid duplicating the whole polling stack for every future integration. The
+poll/cursor mechanics are generic infrastructure; event contracts and handlers
+remain domain-specific.
+
+Expected future shape:
+
+```text
+feed/EventFeedPoller
+  -> TokenIdentityEventFeedClient
+  -> IdentityEventHandler
+
+webhook/KycWebhookResource
+  -> KycEventHandler
+
+webhook/BillingWebhookResource
+  -> BillingEventHandler
+```
+
+KYC and billing providers are expected to push callbacks/webhooks to
+`onboarding-svc`, so they should not require their own feed pollers unless a
+specific provider lacks webhook support.
 
 ## Migration Order
 
