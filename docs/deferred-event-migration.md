@@ -33,7 +33,7 @@ token-svc
 onboarding-svc
   -> polls the identity event feed
   -> persists its source cursor
-  -> handles each IdentityEventEnvelope through IdentityEventHandler
+  -> handles each IdentityEventFeedItem through IdentityEventHandler
 ```
 
 The HTTP feed must be cursor-based. `onboarding-svc` must not poll current user
@@ -164,12 +164,9 @@ SqsIdentityEventConsumer
   -> OnboardingEngine
 ```
 
-Before implementing the HTTP feed poller, review the current
-`IdentityEventHandler` and `IdentityEventMapper` signatures. They currently
-accept `IdentityEventEnvelope` because the SQS prototype was implemented
-first. For the HTTP feed direction, they should either accept
-`IdentityEventFeedItem` directly or use a neutral application command that both
-feed items and SQS envelopes can map into.
+The HTTP feed path now uses `IdentityEventFeedItem` directly. The older
+`IdentityEventEnvelope` remains tied to the SNS/SQS prototype and should not be
+promoted as the central HTTP feed contract.
 
 Avoid duplicating the whole polling stack for every future integration. The
 poll/cursor mechanics are generic infrastructure; event contracts and handlers
@@ -247,30 +244,37 @@ Completed:
 - `onboarding-svc` now has an HTTP feed poller that reads pages, delegates each
   event to `IdentityEventHandler`, and advances the persisted cursor only after
   an item is processed.
+- The HTTP feed path was smoke-tested locally with both services running:
+  public registration in `token-svc`, email confirmation in `token-svc`, feed
+  polling in `onboarding-svc`, and onboarding status advancing to
+  `EMAIL_VERIFIED` / `IDENTITY_CHECK`.
+- Feed clients and polling classes were reorganized so outbound clients live in
+  `clients`, generic polling/cursor infrastructure lives in `eventfeeds`, and
+  identity feed payloads remain in `identity.events`.
 - The test suite passes with 40 tests.
 
 Next checkpoint:
 
-- Run an end-to-end local smoke test with both services running:
-  registration in `token-svc`, feed polling in `onboarding-svc`, and onboarding
-  train state updated from the feed.
-- Once the feed path is verified end to end, remove the temporary local
-  onboarding engine calls and onboarding persistence from `token-svc`.
+- Verify duplicate delivery by resetting the stored cursor and confirming
+  idempotency through `ProcessedIdentityEventEntity`.
+- Verify token renewal by forcing an expired or invalid cached token and
+  confirming one successful retry.
+- Once those failure paths are verified, remove the temporary local onboarding
+  engine calls and onboarding persistence from `token-svc`.
 
 ## Next Implementation Checklist
 
-1. Run the HTTP feed smoke test locally with `identity.events.feed.enabled=true`.
-2. Verify duplicate delivery by resetting the stored cursor and confirming
+1. Verify duplicate delivery by resetting the stored cursor and confirming
    idempotency through `ProcessedIdentityEventEntity`.
-3. Verify token renewal by forcing an expired/invalid cached token and
+2. Verify token renewal by forcing an expired/invalid cached token and
    confirming one successful retry.
-4. Remove local onboarding state handling from `token-svc`:
+3. Remove local onboarding state handling from `token-svc`:
    `OnboardingProcess`, local engine, rules, repository, and temporary
    `DefaultUserService` calls.
-5. Keep `token-svc` event emission selective: public registration and email
+4. Keep `token-svc` event emission selective: public registration and email
    confirmation flows emit identity events; administrative/support/migration
    actions do not emit onboarding events by default.
-6. After local onboarding is removed from `token-svc`, revisit REST endpoint
+5. After local onboarding is removed from `token-svc`, revisit REST endpoint
    naming/alignment only for permanent API surfaces.
 
 Identity events from `token-svc` must be selective. The feed is not a general
@@ -300,7 +304,9 @@ The script provisions:
 
 The following are not implemented yet:
 
-- End-to-end cross-service event flow from `token-svc`.
+- Duplicate-delivery smoke verification by resetting the HTTP feed cursor.
+- Token-renewal smoke verification after forcing an expired/invalid cached
+  service JWT.
 - Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
 - Removal of onboarding code from `token-svc`.

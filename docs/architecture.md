@@ -79,10 +79,14 @@ KYC, profile, and subscription integrations remain deferred.
 state machine. That implementation is reusable and will eventually move to
 `onboarding-svc`; it must not be independently reimplemented here.
 
-The migration is deferred until the project is ready to introduce reliable
-asynchronous identity events. The target transport is SNS to SQS, developed
-locally with LocalStack, with a transactional outbox in `token-svc` and
-idempotent consumption in `onboarding-svc`.
+The immediate migration path uses a cursor-based HTTP identity event feed from
+`token-svc`, consumed by `onboarding-svc` through Quarkus REST clients and a
+poller that persists its cursor. SNS/SQS was validated locally with LocalStack,
+but remains a future option instead of the initial production path.
+
+The feed is protected by a technical JWT. `onboarding-svc` obtains that token
+through client credentials, caches it until it is close to expiration, and
+retries once when the feed returns `401`.
 
 See [Deferred Onboarding Event Migration](deferred-event-migration.md) for the
 target architecture, event contract, migration order, and explicitly deferred

@@ -9,7 +9,9 @@ Use technical layers under the service package prefix:
 
 ```text
 cl.dsoto.<service>
+  clients
   entities
+  eventfeeds
   identity/events
   model
   repositories
@@ -25,6 +27,34 @@ area. For example, identity events live under:
 
 ```text
 cl.dsoto.onboarding.identity.events
+```
+
+Use `clients` for outbound service clients. REST client interfaces,
+transport-specific client facades, and service-token providers should be easy
+to find there instead of being buried inside a domain event package.
+
+```text
+clients/TokenAuthRestClient.java
+clients/TokenIdentityEventFeedRestClient.java
+clients/TokenIdentityEventFeedClient.java
+clients/TokenServiceAccessTokenProvider.java
+```
+
+Use `eventfeeds` for generic feed polling mechanics such as cursor loading,
+cursor persistence, retry orchestration, and scheduler/poller classes.
+
+```text
+eventfeeds/EventFeedPoller.java
+eventfeeds/EventFeedCursorStore.java
+```
+
+Domain-specific event payloads and handlers should remain in their capability
+package. For identity:
+
+```text
+identity/events/IdentityEventFeedItem.java
+identity/events/IdentityEventFeedPage.java
+identity/events/IdentityEventHandler.java
 ```
 
 ## Web Services
@@ -130,6 +160,10 @@ Use capability-specific packages for integration contracts and adapters.
 identity/events
 identity/events/sqs
 ```
+
+Do not put all feed infrastructure under `identity.events`. The poll/cursor
+mechanics are shared infrastructure. Identity-specific feed items, mappers, and
+handlers remain under `identity.events`.
 
 Event envelope classes should stay close to the adapter or capability they
 belong to. If a class is only needed by an SNS/SQS prototype, keep it under the
