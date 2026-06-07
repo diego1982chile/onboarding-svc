@@ -12,6 +12,7 @@ cl.dsoto.<service>
   clients
   entities
   eventfeeds
+  identity/events/adapters
   identity/events
   model
   repositories
@@ -29,26 +30,27 @@ area. For example, identity events live under:
 cl.dsoto.onboarding.identity.events
 ```
 
-Use `clients` for outbound service clients. REST client interfaces,
-transport-specific client facades, and service-token providers should be easy
-to find there instead of being buried inside a domain event package.
+Use `clients` for outbound REST client interfaces, client-token helpers, and
+payloads that belong only to external client contracts. Raw MicroProfile REST
+clients should be easy to find there instead of being buried inside a domain
+event package.
 
 ```text
 clients/TokenAuthRestClient.java
 clients/TokenIdentityEventFeedRestClient.java
 clients/TokenServiceAccessTokenProvider.java
-clients/facade/TokenIdentityEventFeedClient.java
 clients/resources/AccessTokenResource.java
 ```
-
-Use `clients.facade` when a class wraps one or more REST clients to add
-cross-call behavior such as authorization headers, token renewal, retry, or
-transport error handling. These classes are not MicroProfile REST client
-interfaces.
 
 Use `clients.resources` for payloads that belong only to outbound client
 contracts. Prefer `*Resource` names for serialized HTTP payloads and avoid
 names that make payloads look like clients.
+
+Use capability-specific `adapters` packages when a class translates an external
+transport into an application capability. For example,
+`identity.events.adapters.TokenIdentityEventFeedAdapter` wraps the raw token
+REST client with authorization, token renewal, one retry after `401`, and maps
+the result into the identity event feed consumed by the poller.
 
 Use `eventfeeds` for generic feed polling mechanics such as cursor loading,
 cursor persistence, retry orchestration, and scheduler/poller classes.
@@ -65,6 +67,7 @@ package. For identity:
 identity/events/IdentityEventFeedItem.java
 identity/events/IdentityEventFeedPage.java
 identity/events/IdentityEventHandler.java
+identity/events/adapters/TokenIdentityEventFeedAdapter.java
 ```
 
 ## Web Services
@@ -172,8 +175,8 @@ identity/events/sqs
 ```
 
 Do not put all feed infrastructure under `identity.events`. The poll/cursor
-mechanics are shared infrastructure. Identity-specific feed items, mappers, and
-handlers remain under `identity.events`.
+mechanics are shared infrastructure. Identity-specific feed items, mappers,
+handlers, and adapters remain under `identity.events`.
 
 Event envelope classes should stay close to the adapter or capability they
 belong to. If a class is only needed by an SNS/SQS prototype, keep it under the

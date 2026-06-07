@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.clients.facade;
+package cl.dsoto.onboarding.identity.events.adapters;
 
 import cl.dsoto.onboarding.clients.TokenIdentityEventFeedRestClient;
 import cl.dsoto.onboarding.clients.TokenServiceAccessTokenProvider;
@@ -16,7 +16,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class TokenIdentityEventFeedClientTest {
+class TokenIdentityEventFeedAdapterTest {
 
     @Test
     void shouldRenewTokenAndRetryOnceWhenFeedRejectsBearerToken() {
@@ -31,7 +31,7 @@ class TokenIdentityEventFeedClientTest {
         when(restClient.getIdentityEvents("Bearer fresh-token", 10L, 100))
                 .thenReturn(page);
 
-        TokenIdentityEventFeedClient client = new TokenIdentityEventFeedClient(restClient, accessTokenProvider);
+        TokenIdentityEventFeedAdapter client = new TokenIdentityEventFeedAdapter(restClient, accessTokenProvider);
 
         assertThat(client.getIdentityEvents(10L, 100), is(page));
         verify(accessTokenProvider).invalidate();

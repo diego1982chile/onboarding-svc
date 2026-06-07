@@ -1,9 +1,9 @@
 package cl.dsoto.onboarding.eventfeeds;
 
-import cl.dsoto.onboarding.clients.facade.TokenIdentityEventFeedClient;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedItem;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import cl.dsoto.onboarding.identity.events.IdentityEventHandler;
+import cl.dsoto.onboarding.identity.events.adapters.TokenIdentityEventFeedAdapter;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -16,7 +16,7 @@ public class EventFeedPoller {
 
     private static final Logger LOGGER = Logger.getLogger(EventFeedPoller.class);
 
-    private final TokenIdentityEventFeedClient feedClient;
+    private final TokenIdentityEventFeedAdapter feedClient;
     private final IdentityEventHandler identityEventHandler;
     private final EventFeedCursorStore cursorStore;
 
@@ -30,7 +30,7 @@ public class EventFeedPoller {
     String source;
 
     public EventFeedPoller(
-            TokenIdentityEventFeedClient feedClient,
+            TokenIdentityEventFeedAdapter feedClient,
             IdentityEventHandler identityEventHandler,
             EventFeedCursorStore cursorStore
     ) {

@@ -128,7 +128,7 @@ The intended immediate flow is:
 
 ```text
 EventFeedPoller
-  -> TokenIdentityEventFeedClient
+  -> TokenIdentityEventFeedAdapter
   -> IdentityEventHandler
   -> IdentityEventMapper
   -> OnboardingEngine
@@ -139,8 +139,10 @@ Responsibilities:
 - `EventFeedPoller` owns polling cadence, cursor loading, cursor persistence,
   and retry behavior. It should stay generic enough to avoid creating one
   poller class per future domain.
-- `TokenIdentityEventFeedClient` owns HTTP calls to `token-svc` and maps the
-  feed response into `IdentityEventFeedPage` / `IdentityEventFeedItem` values.
+- `TokenIdentityEventFeedAdapter` adapts the identity feed exposed by
+  `token-svc` into the application flow. It uses the raw token REST client,
+  adds the technical JWT, renews the cached token after `401`, retries once,
+  and returns `IdentityEventFeedPage` / `IdentityEventFeedItem` values.
 - `IdentityEventHandler` owns application coordination: idempotency by
   `eventId`, mapping the external identity event, and invoking the onboarding
   engine inside the correct transaction boundary.
@@ -176,7 +178,7 @@ Expected future shape:
 
 ```text
 feed/EventFeedPoller
-  -> TokenIdentityEventFeedClient
+  -> TokenIdentityEventFeedAdapter
   -> IdentityEventHandler
 
 webhook/KycWebhookResource

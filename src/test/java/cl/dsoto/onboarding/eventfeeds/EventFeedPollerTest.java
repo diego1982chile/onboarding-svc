@@ -1,10 +1,10 @@
 package cl.dsoto.onboarding.eventfeeds;
 
-import cl.dsoto.onboarding.clients.facade.TokenIdentityEventFeedClient;
 import cl.dsoto.onboarding.identity.events.IdentityEvent;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedItem;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import cl.dsoto.onboarding.identity.events.IdentityEventHandler;
+import cl.dsoto.onboarding.identity.events.adapters.TokenIdentityEventFeedAdapter;
 import cl.dsoto.onboarding.model.OnboardingEventType;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,7 +24,7 @@ class EventFeedPollerTest {
 
     @Test
     void shouldProcessFeedItemsAndAdvanceCursorAfterEachEvent() {
-        TokenIdentityEventFeedClient feedClient = mock(TokenIdentityEventFeedClient.class);
+        TokenIdentityEventFeedAdapter feedClient = mock(TokenIdentityEventFeedAdapter.class);
         IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
         EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
         EventFeedPoller poller = new EventFeedPoller(feedClient, identityEventHandler, cursorStore);
@@ -52,7 +52,7 @@ class EventFeedPollerTest {
 
     @Test
     void shouldContinuePollingWhileFeedHasMorePages() {
-        TokenIdentityEventFeedClient feedClient = mock(TokenIdentityEventFeedClient.class);
+        TokenIdentityEventFeedAdapter feedClient = mock(TokenIdentityEventFeedAdapter.class);
         IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
         EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
         EventFeedPoller poller = new EventFeedPoller(feedClient, identityEventHandler, cursorStore);

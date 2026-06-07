@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.clients.facade;
+package cl.dsoto.onboarding.identity.events.adapters;
 
 import cl.dsoto.onboarding.clients.TokenIdentityEventFeedRestClient;
 import cl.dsoto.onboarding.clients.TokenServiceAccessTokenProvider;
@@ -8,12 +8,12 @@ import jakarta.ws.rs.WebApplicationException;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 @ApplicationScoped
-public class TokenIdentityEventFeedClient {
+public class TokenIdentityEventFeedAdapter {
 
     private final TokenIdentityEventFeedRestClient feedRestClient;
     private final TokenServiceAccessTokenProvider accessTokenProvider;
 
-    public TokenIdentityEventFeedClient(
+    public TokenIdentityEventFeedAdapter(
             @RestClient TokenIdentityEventFeedRestClient feedRestClient,
             TokenServiceAccessTokenProvider accessTokenProvider
     ) {
