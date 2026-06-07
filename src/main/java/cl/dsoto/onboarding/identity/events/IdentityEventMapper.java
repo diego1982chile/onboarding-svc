@@ -4,5 +4,5 @@ import cl.dsoto.onboarding.model.OnboardingEvent;
 
 public interface IdentityEventMapper {
 
-    OnboardingEvent toOnboardingEvent(IdentityEventEnvelope envelope);
+    OnboardingEvent toOnboardingEvent(IdentityEvent identityEvent);
 }

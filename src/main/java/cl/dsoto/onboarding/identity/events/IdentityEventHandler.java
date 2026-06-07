@@ -27,26 +27,33 @@ public class IdentityEventHandler {
     }
 
     @Transactional
-    public boolean handle(IdentityEventEnvelope envelope) {
-        if (envelope == null) {
-            throw new IllegalArgumentException("envelope is required");
+    public boolean handle(IdentityEvent identityEvent) {
+        if (identityEvent == null) {
+            throw new IllegalArgumentException("identityEvent is required");
         }
 
-        if (processedIdentityEventRepository.existsByEventId(envelope.eventId())) {
+        if (processedIdentityEventRepository.existsByEventId(identityEvent.eventId())) {
             return false;
         }
 
-        OnboardingEvent onboardingEvent = identityEventMapper.toOnboardingEvent(envelope);
+        OnboardingEvent onboardingEvent = identityEventMapper.toOnboardingEvent(identityEvent);
         onboardingEngine.applyEvent(onboardingEvent);
 
         processedIdentityEventRepository.save(ProcessedIdentityEventEntity.from(
-                envelope.eventId(),
-                envelope.eventType(),
-                envelope.subject(),
-                envelope.occurredAt(),
+                identityEvent.eventId(),
+                identityEvent.eventType(),
+                identityEvent.subject(),
+                identityEvent.occurredAt(),
                 Instant.now()
         ));
 
         return true;
+    }
+
+    public boolean handle(IdentityEventEnvelope envelope) {
+        if (envelope == null) {
+            throw new IllegalArgumentException("envelope is required");
+        }
+        return handle(envelope.toIdentityEvent());
     }
 }

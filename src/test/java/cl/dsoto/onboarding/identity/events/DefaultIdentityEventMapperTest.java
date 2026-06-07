@@ -15,10 +15,9 @@ class DefaultIdentityEventMapperTest {
     private final IdentityEventMapper mapper = new DefaultIdentityEventMapper();
 
     @Test
-    void shouldMapUserRegisteredEnvelopeToDomainEvent() {
+    void shouldMapUserRegisteredIdentityEventToDomainEvent() {
         Instant occurredAt = Instant.parse("2026-06-03T12:00:00Z");
-        IdentityEventEnvelope envelope = new IdentityEventEnvelope(
-                1,
+        IdentityEvent identityEvent = new IdentityEvent(
                 "event-123",
                 OnboardingEventType.USER_REGISTERED,
                 "user@example.com",
@@ -26,7 +25,7 @@ class DefaultIdentityEventMapperTest {
                 "registration-123"
         );
 
-        OnboardingEvent event = mapper.toOnboardingEvent(envelope);
+        OnboardingEvent event = mapper.toOnboardingEvent(identityEvent);
 
         assertThat(event.username(), is("user@example.com"));
         assertThat(event.type(), is(OnboardingEventType.USER_REGISTERED));
@@ -35,10 +34,9 @@ class DefaultIdentityEventMapperTest {
     }
 
     @Test
-    void shouldMapEmailVerifiedEnvelopeToDomainEvent() {
+    void shouldMapEmailVerifiedIdentityEventToDomainEvent() {
         Instant occurredAt = Instant.parse("2026-06-04T01:00:00Z");
-        IdentityEventEnvelope envelope = new IdentityEventEnvelope(
-                1,
+        IdentityEvent identityEvent = new IdentityEvent(
                 "event-456",
                 OnboardingEventType.EMAIL_VERIFIED,
                 "verified@example.com",
@@ -46,7 +44,7 @@ class DefaultIdentityEventMapperTest {
                 null
         );
 
-        OnboardingEvent event = mapper.toOnboardingEvent(envelope);
+        OnboardingEvent event = mapper.toOnboardingEvent(identityEvent);
 
         assertThat(event.username(), is("verified@example.com"));
         assertThat(event.type(), is(OnboardingEventType.EMAIL_VERIFIED));
@@ -56,8 +54,7 @@ class DefaultIdentityEventMapperTest {
 
     @Test
     void shouldRejectUnsupportedIdentityEventTypeForNow() {
-        IdentityEventEnvelope envelope = new IdentityEventEnvelope(
-                1,
+        IdentityEvent identityEvent = new IdentityEvent(
                 "event-789",
                 OnboardingEventType.KYC_APPROVED,
                 "user@example.com",
@@ -65,6 +62,6 @@ class DefaultIdentityEventMapperTest {
                 null
         );
 
-        assertThrows(IllegalArgumentException.class, () -> mapper.toOnboardingEvent(envelope));
+        assertThrows(IllegalArgumentException.class, () -> mapper.toOnboardingEvent(identityEvent));
     }
 }

@@ -8,21 +8,21 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class DefaultIdentityEventMapper implements IdentityEventMapper {
 
     @Override
-    public OnboardingEvent toOnboardingEvent(IdentityEventEnvelope envelope) {
-        if (envelope == null) {
-            throw new IllegalArgumentException("envelope is required");
+    public OnboardingEvent toOnboardingEvent(IdentityEvent identityEvent) {
+        if (identityEvent == null) {
+            throw new IllegalArgumentException("identityEvent is required");
         }
 
-        if (envelope.eventType() != OnboardingEventType.USER_REGISTERED
-                && envelope.eventType() != OnboardingEventType.EMAIL_VERIFIED) {
-            throw new IllegalArgumentException("Unsupported identity event type: " + envelope.eventType());
+        if (identityEvent.eventType() != OnboardingEventType.USER_REGISTERED
+                && identityEvent.eventType() != OnboardingEventType.EMAIL_VERIFIED) {
+            throw new IllegalArgumentException("Unsupported identity event type: " + identityEvent.eventType());
         }
 
         return new OnboardingEvent(
-                envelope.subject(),
-                envelope.eventType(),
-                envelope.occurredAt(),
-                envelope.registrationId()
+                identityEvent.subject(),
+                identityEvent.eventType(),
+                identityEvent.occurredAt(),
+                identityEvent.registrationId()
         );
     }
 }

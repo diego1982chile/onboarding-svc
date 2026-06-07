@@ -4,8 +4,7 @@ import cl.dsoto.onboarding.model.OnboardingEventType;
 
 import java.time.Instant;
 
-public record IdentityEventEnvelope(
-        int version,
+public record IdentityEvent(
         String eventId,
         OnboardingEventType eventType,
         String subject,
@@ -13,12 +12,7 @@ public record IdentityEventEnvelope(
         String registrationId
 ) {
 
-    public static final int CURRENT_VERSION = 1;
-
-    public IdentityEventEnvelope {
-        if (version != CURRENT_VERSION) {
-            throw new IllegalArgumentException("Unsupported identity event version: " + version);
-        }
+    public IdentityEvent {
         if (eventId == null || eventId.isBlank()) {
             throw new IllegalArgumentException("eventId is required");
         }
@@ -35,9 +29,5 @@ public record IdentityEventEnvelope(
                 && (registrationId == null || registrationId.isBlank())) {
             throw new IllegalArgumentException("registrationId is required for USER_REGISTERED");
         }
-    }
-
-    public IdentityEvent toIdentityEvent() {
-        return new IdentityEvent(eventId, eventType, subject, occurredAt, registrationId);
     }
 }

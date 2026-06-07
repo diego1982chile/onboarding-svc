@@ -234,41 +234,44 @@ Completed:
   status over HTTP.
 - The SNS/SQS path is now treated as a validated prototype and future option,
   not the immediate migration target.
-- The test suite passes with 35 tests.
+- `token-svc` now persists identity events in an internal event log and exposes
+  a cursor-based feed at `GET /internal/identity-events?after=<cursor>&limit=<n>`.
+- The identity event feed is protected for service clients through the
+  `token.identity-events.read` scope.
+- `token-svc` exposes a client-credentials endpoint for `onboarding-svc` to
+  obtain a technical JWT for the feed.
+- `onboarding-svc` now has Quarkus REST clients for token acquisition and
+  identity event feed consumption.
+- `onboarding-svc` caches the technical JWT, renews it before expiration, and
+  retries the feed once after a `401`.
+- `onboarding-svc` now has an HTTP feed poller that reads pages, delegates each
+  event to `IdentityEventHandler`, and advances the persisted cursor only after
+  an item is processed.
+- The test suite passes with 40 tests.
 
 Next checkpoint:
 
-- Add an identity event log in `token-svc`.
-- Replace direct `OnboardingEngine.applyEvent(...)` calls in `token-svc` with
-  identity event log persistence.
-- Expose a cursor-based internal identity event feed from `token-svc`.
+- Run an end-to-end local smoke test with both services running:
+  registration in `token-svc`, feed polling in `onboarding-svc`, and onboarding
+  train state updated from the feed.
+- Once the feed path is verified end to end, remove the temporary local
+  onboarding engine calls and onboarding persistence from `token-svc`.
 
 ## Next Implementation Checklist
 
-1. In `token-svc`, add `IdentityEventLogEntry` persistence:
-   `sequence`, `eventId`, `eventType`, `subject`, `occurredAt`, and optional
-   `registrationId`.
-2. In `token-svc`, add feed response models:
-   `IdentityEventFeedItem` and `IdentityEventFeedPage`.
-3. In `token-svc`, expose
-   `GET /internal/identity-events?after=<cursor>&limit=<n>`.
-4. In `token-svc`, write `USER_REGISTERED` and `EMAIL_VERIFIED` to the event
-   log while keeping the existing local onboarding engine calls temporarily.
-5. In `onboarding-svc`, adjust `IdentityEventHandler` and
-   `IdentityEventMapper` so the HTTP feed path does not depend on
-   `IdentityEventEnvelope`.
-6. In `onboarding-svc`, add local cursor persistence for the
-   `token-svc.identity` feed source.
-7. In `onboarding-svc`, implement `EventFeedPoller` and
-   `TokenIdentityEventFeedClient`.
-8. Validate end-to-end registration and email confirmation through the feed:
-   register in `token-svc`, confirm email, poll from `onboarding-svc`, and
-   verify onboarding state reaches `EMAIL_VERIFIED`.
-9. After the feed path is validated, remove direct onboarding state mutation
-   from `token-svc`.
-10. After `onboarding-svc` fully owns onboarding state, remove transitional
-    onboarding entities, rules, repositories, endpoints, and tables from
-    `token-svc`.
+1. Run the HTTP feed smoke test locally with `identity.events.feed.enabled=true`.
+2. Verify duplicate delivery by resetting the stored cursor and confirming
+   idempotency through `ProcessedIdentityEventEntity`.
+3. Verify token renewal by forcing an expired/invalid cached token and
+   confirming one successful retry.
+4. Remove local onboarding state handling from `token-svc`:
+   `OnboardingProcess`, local engine, rules, repository, and temporary
+   `DefaultUserService` calls.
+5. Keep `token-svc` event emission selective: public registration and email
+   confirmation flows emit identity events; administrative/support/migration
+   actions do not emit onboarding events by default.
+6. After local onboarding is removed from `token-svc`, revisit REST endpoint
+   naming/alignment only for permanent API surfaces.
 
 Identity events from `token-svc` must be selective. The feed is not a general
 user audit log. Only explicit user-facing onboarding flows should append
@@ -297,9 +300,6 @@ The script provisions:
 
 The following are not implemented yet:
 
-- Identity event log in `token-svc`.
-- Cursor-based internal identity event feed in `token-svc`.
-- HTTP feed poller in `onboarding-svc`.
 - End-to-end cross-service event flow from `token-svc`.
 - Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
