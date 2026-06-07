@@ -1,5 +1,6 @@
 package cl.dsoto.onboarding.clients;
 
+import cl.dsoto.onboarding.clients.resources.AccessTokenResource;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
@@ -49,7 +50,7 @@ public class TokenServiceAccessTokenProvider {
                 return token.value();
             }
 
-            TokenAccessToken response = tokenAuthRestClient.clientCredentials(clientId, clientSecret, scope);
+            AccessTokenResource response = tokenAuthRestClient.clientCredentials(clientId, clientSecret, scope);
             if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
                 throw new IllegalStateException("token-svc did not return an access token");
             }

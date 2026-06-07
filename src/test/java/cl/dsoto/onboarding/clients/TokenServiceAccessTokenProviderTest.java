@@ -1,5 +1,6 @@
 package cl.dsoto.onboarding.clients;
 
+import cl.dsoto.onboarding.clients.resources.AccessTokenResource;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -15,7 +16,7 @@ class TokenServiceAccessTokenProviderTest {
     void shouldReuseCachedTokenWhileItIsValid() {
         TokenAuthRestClient restClient = mock(TokenAuthRestClient.class);
         when(restClient.clientCredentials("onboarding-svc", "secret", "token.identity-events.read"))
-                .thenReturn(new TokenAccessToken("token-1", "Bearer", 3600L));
+                .thenReturn(new AccessTokenResource("token-1", "Bearer", 3600L));
 
         TokenServiceAccessTokenProvider provider = new TokenServiceAccessTokenProvider(restClient);
         provider.clientId = "onboarding-svc";
@@ -35,8 +36,8 @@ class TokenServiceAccessTokenProviderTest {
         TokenAuthRestClient restClient = mock(TokenAuthRestClient.class);
         when(restClient.clientCredentials("onboarding-svc", "secret", "token.identity-events.read"))
                 .thenReturn(
-                        new TokenAccessToken("token-1", "Bearer", 3600L),
-                        new TokenAccessToken("token-2", "Bearer", 3600L)
+                        new AccessTokenResource("token-1", "Bearer", 3600L),
+                        new AccessTokenResource("token-2", "Bearer", 3600L)
                 );
 
         TokenServiceAccessTokenProvider provider = new TokenServiceAccessTokenProvider(restClient);

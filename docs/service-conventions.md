@@ -36,9 +36,19 @@ to find there instead of being buried inside a domain event package.
 ```text
 clients/TokenAuthRestClient.java
 clients/TokenIdentityEventFeedRestClient.java
-clients/TokenIdentityEventFeedClient.java
 clients/TokenServiceAccessTokenProvider.java
+clients/facade/TokenIdentityEventFeedClient.java
+clients/resources/AccessTokenResource.java
 ```
+
+Use `clients.facade` when a class wraps one or more REST clients to add
+cross-call behavior such as authorization headers, token renewal, retry, or
+transport error handling. These classes are not MicroProfile REST client
+interfaces.
+
+Use `clients.resources` for payloads that belong only to outbound client
+contracts. Prefer `*Resource` names for serialized HTTP payloads and avoid
+names that make payloads look like clients.
 
 Use `eventfeeds` for generic feed polling mechanics such as cursor loading,
 cursor persistence, retry orchestration, and scheduler/poller classes.

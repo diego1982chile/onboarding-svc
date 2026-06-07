@@ -1,5 +1,7 @@
-package cl.dsoto.onboarding.clients;
+package cl.dsoto.onboarding.clients.facade;
 
+import cl.dsoto.onboarding.clients.TokenIdentityEventFeedRestClient;
+import cl.dsoto.onboarding.clients.TokenServiceAccessTokenProvider;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;

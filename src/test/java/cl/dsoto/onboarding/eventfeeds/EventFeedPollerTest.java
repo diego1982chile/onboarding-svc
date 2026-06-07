@@ -1,6 +1,6 @@
 package cl.dsoto.onboarding.eventfeeds;
 
-import cl.dsoto.onboarding.clients.TokenIdentityEventFeedClient;
+import cl.dsoto.onboarding.clients.facade.TokenIdentityEventFeedClient;
 import cl.dsoto.onboarding.identity.events.IdentityEvent;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedItem;
 import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
