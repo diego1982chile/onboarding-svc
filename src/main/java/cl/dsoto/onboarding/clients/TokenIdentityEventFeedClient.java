@@ -1,5 +1,6 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.clients;
 
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.WebApplicationException;
 import org.eclipse.microprofile.rest.client.inject.RestClient;

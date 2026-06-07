@@ -1,5 +1,6 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.clients;
 
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
 import jakarta.ws.rs.Path;

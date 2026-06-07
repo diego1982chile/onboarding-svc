@@ -1,32 +1,32 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.eventfeeds;
 
-import cl.dsoto.onboarding.entities.IdentityEventFeedCursorEntity;
-import cl.dsoto.onboarding.repositories.IdentityEventFeedCursorRepository;
+import cl.dsoto.onboarding.entities.EventFeedCursorEntity;
+import cl.dsoto.onboarding.repositories.EventFeedCursorRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
 
 @ApplicationScoped
-public class IdentityEventFeedCursorStore {
+public class EventFeedCursorStore {
 
-    private final IdentityEventFeedCursorRepository cursorRepository;
+    private final EventFeedCursorRepository cursorRepository;
 
-    public IdentityEventFeedCursorStore(IdentityEventFeedCursorRepository cursorRepository) {
+    public EventFeedCursorStore(EventFeedCursorRepository cursorRepository) {
         this.cursorRepository = cursorRepository;
     }
 
     @Transactional
     public Long currentCursor(String source) {
         return cursorRepository.findById(source)
-                .map(IdentityEventFeedCursorEntity::getCursor)
+                .map(EventFeedCursorEntity::getCursor)
                 .orElse(0L);
     }
 
     @Transactional
     public void saveCursor(String source, Long cursor) {
-        IdentityEventFeedCursorEntity entity = cursorRepository.findById(source)
-                .orElseGet(() -> IdentityEventFeedCursorEntity.builder()
+        EventFeedCursorEntity entity = cursorRepository.findById(source)
+                .orElseGet(() -> EventFeedCursorEntity.builder()
                         .source(source)
                         .cursor(0L)
                         .build());

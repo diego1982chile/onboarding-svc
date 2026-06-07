@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.clients;
 
 import org.junit.jupiter.api.Test;
 

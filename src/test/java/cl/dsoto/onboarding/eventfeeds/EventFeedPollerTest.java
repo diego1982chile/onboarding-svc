@@ -1,6 +1,9 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.eventfeeds;
 
+import cl.dsoto.onboarding.clients.TokenIdentityEventFeedClient;
 import cl.dsoto.onboarding.identity.events.IdentityEvent;
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedItem;
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import cl.dsoto.onboarding.identity.events.IdentityEventHandler;
 import cl.dsoto.onboarding.model.OnboardingEventType;
 import org.junit.jupiter.api.Test;
@@ -23,7 +26,7 @@ class EventFeedPollerTest {
     void shouldProcessFeedItemsAndAdvanceCursorAfterEachEvent() {
         TokenIdentityEventFeedClient feedClient = mock(TokenIdentityEventFeedClient.class);
         IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
-        IdentityEventFeedCursorStore cursorStore = mock(IdentityEventFeedCursorStore.class);
+        EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
         EventFeedPoller poller = new EventFeedPoller(feedClient, identityEventHandler, cursorStore);
         poller.limit = 100;
         poller.source = "token-svc";
@@ -51,7 +54,7 @@ class EventFeedPollerTest {
     void shouldContinuePollingWhileFeedHasMorePages() {
         TokenIdentityEventFeedClient feedClient = mock(TokenIdentityEventFeedClient.class);
         IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
-        IdentityEventFeedCursorStore cursorStore = mock(IdentityEventFeedCursorStore.class);
+        EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
         EventFeedPoller poller = new EventFeedPoller(feedClient, identityEventHandler, cursorStore);
         poller.limit = 1;
         poller.source = "token-svc";

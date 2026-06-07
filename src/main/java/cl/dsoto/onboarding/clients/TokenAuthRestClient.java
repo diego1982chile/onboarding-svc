@@ -1,4 +1,4 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.clients;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;

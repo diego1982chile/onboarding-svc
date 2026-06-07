@@ -1,6 +1,5 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.identity.events;
 
-import cl.dsoto.onboarding.identity.events.IdentityEvent;
 import cl.dsoto.onboarding.model.OnboardingEventType;
 
 import java.time.Instant;

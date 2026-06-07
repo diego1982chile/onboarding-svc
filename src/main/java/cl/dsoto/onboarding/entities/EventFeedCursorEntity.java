@@ -16,7 +16,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Entity
 @Table(name = "IDENTITY_EVENT_FEED_CURSOR")
-public class IdentityEventFeedCursorEntity {
+public class EventFeedCursorEntity {
 
     @Id
     private String source;

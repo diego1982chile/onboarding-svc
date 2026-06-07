@@ -1,5 +1,8 @@
-package cl.dsoto.onboarding.identity.events.feed;
+package cl.dsoto.onboarding.eventfeeds;
 
+import cl.dsoto.onboarding.clients.TokenIdentityEventFeedClient;
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedItem;
+import cl.dsoto.onboarding.identity.events.IdentityEventFeedPage;
 import cl.dsoto.onboarding.identity.events.IdentityEventHandler;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -15,7 +18,7 @@ public class EventFeedPoller {
 
     private final TokenIdentityEventFeedClient feedClient;
     private final IdentityEventHandler identityEventHandler;
-    private final IdentityEventFeedCursorStore cursorStore;
+    private final EventFeedCursorStore cursorStore;
 
     @ConfigProperty(name = "identity.events.feed.enabled")
     boolean enabled;
@@ -29,7 +32,7 @@ public class EventFeedPoller {
     public EventFeedPoller(
             TokenIdentityEventFeedClient feedClient,
             IdentityEventHandler identityEventHandler,
-            IdentityEventFeedCursorStore cursorStore
+            EventFeedCursorStore cursorStore
     ) {
         this.feedClient = feedClient;
         this.identityEventHandler = identityEventHandler;
