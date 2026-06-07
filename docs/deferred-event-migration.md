@@ -263,13 +263,16 @@ Completed:
   local `OnboardingProcess`, local engine, Easy Rules transitions, repository,
   and `DefaultUserService` calls were deleted. `token-svc` keeps only identity
   event log persistence, selective event emission, and the protected feed.
+- The final cross-service smoke test passed after removing local onboarding
+  from `token-svc`: public registration created `USER_REGISTERED`, email
+  confirmation created `EMAIL_VERIFIED`, `onboarding-svc` consumed both through
+  the HTTP feed poller, and the public onboarding status advanced to
+  `EMAIL_VERIFIED` / `IDENTITY_CHECK`.
 - The test suite passes with 44 tests.
 
 Next checkpoint:
 
-- Run a final cross-service smoke test after the removal: registration and email
-  confirmation in `token-svc`, feed polling in `onboarding-svc`, and onboarding
-  state updated from the feed.
+- Revisit REST endpoint naming/alignment only for permanent API surfaces.
 
 ## Next Implementation Checklist
 
@@ -279,12 +282,10 @@ Next checkpoint:
 2. Optionally run a manual token-renewal smoke test by forcing an invalid
    cached service JWT and confirming one successful retry against live
    `token-svc`.
-3. Run a final cross-service smoke test after removing local onboarding from
-   `token-svc`.
-4. Keep `token-svc` event emission selective: public registration and email
+3. Keep `token-svc` event emission selective: public registration and email
    confirmation flows emit identity events; administrative/support/migration
    actions do not emit onboarding events by default.
-5. Revisit REST endpoint naming/alignment only for permanent API surfaces.
+4. Revisit REST endpoint naming/alignment only for permanent API surfaces.
 
 Identity events from `token-svc` must be selective. The feed is not a general
 user audit log. Only explicit user-facing onboarding flows should append
