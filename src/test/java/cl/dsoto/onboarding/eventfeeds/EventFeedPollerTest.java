@@ -76,6 +76,28 @@ class EventFeedPollerTest {
         assertThat(second.cursor(), is(12L));
     }
 
+    @Test
+    void shouldAdvanceCursorWhenFeedReturnsAlreadyProcessedEvent() {
+        TokenIdentityEventFeedAdapter feedClient = mock(TokenIdentityEventFeedAdapter.class);
+        IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
+        EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
+        EventFeedPoller poller = new EventFeedPoller(feedClient, identityEventHandler, cursorStore);
+        poller.limit = 100;
+        poller.source = "token-svc";
+
+        IdentityEventFeedItem duplicate = item(11L, "event-1", OnboardingEventType.USER_REGISTERED);
+
+        when(cursorStore.currentCursor("token-svc")).thenReturn(10L);
+        when(feedClient.getIdentityEvents(10L, 100))
+                .thenReturn(new IdentityEventFeedPage(List.of(duplicate), 11L, false));
+        when(identityEventHandler.handle(duplicate.toIdentityEvent())).thenReturn(false);
+
+        poller.pollAvailablePages();
+
+        verify(identityEventHandler).handle(duplicate.toIdentityEvent());
+        verify(cursorStore).saveCursor("token-svc", 11L);
+    }
+
     private IdentityEventFeedItem item(Long cursor, String eventId, OnboardingEventType eventType) {
         return new IdentityEventFeedItem(
                 cursor,

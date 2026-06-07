@@ -253,12 +253,13 @@ Completed:
 - Feed clients and polling classes were reorganized so outbound clients live in
   `clients`, generic polling/cursor infrastructure lives in `eventfeeds`, and
   identity feed payloads remain in `identity.events`.
-- The test suite passes with 40 tests.
+- Automated feed idempotency coverage was added: when the feed returns an
+  already processed event after a cursor reset/rollback, `IdentityEventHandler`
+  ignores it by `eventId` and `EventFeedPoller` still advances the cursor.
+- The test suite passes with 41 tests.
 
 Next checkpoint:
 
-- Verify duplicate delivery by resetting the stored cursor and confirming
-  idempotency through `ProcessedIdentityEventEntity`.
 - Verify token renewal by forcing an expired or invalid cached token and
   confirming one successful retry.
 - Once those failure paths are verified, remove the temporary local onboarding
@@ -266,10 +267,11 @@ Next checkpoint:
 
 ## Next Implementation Checklist
 
-1. Verify duplicate delivery by resetting the stored cursor and confirming
-   idempotency through `ProcessedIdentityEventEntity`.
-2. Verify token renewal by forcing an expired/invalid cached token and
+1. Verify token renewal by forcing an expired/invalid cached token and
    confirming one successful retry.
+2. Optionally run a manual duplicate-delivery smoke test by resetting the
+   stored HTTP feed cursor and confirming the same behavior against a live
+   database.
 3. Remove local onboarding state handling from `token-svc`:
    `OnboardingProcess`, local engine, rules, repository, and temporary
    `DefaultUserService` calls.
@@ -306,9 +308,10 @@ The script provisions:
 
 The following are not implemented yet:
 
-- Duplicate-delivery smoke verification by resetting the HTTP feed cursor.
 - Token-renewal smoke verification after forcing an expired/invalid cached
   service JWT.
+- Manual duplicate-delivery smoke verification by resetting the HTTP feed
+  cursor in a live database.
 - Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
 - Removal of onboarding code from `token-svc`.
