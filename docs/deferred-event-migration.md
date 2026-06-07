@@ -256,22 +256,24 @@ Completed:
 - Automated feed idempotency coverage was added: when the feed returns an
   already processed event after a cursor reset/rollback, `IdentityEventHandler`
   ignores it by `eventId` and `EventFeedPoller` still advances the cursor.
-- The test suite passes with 41 tests.
+- Automated token-renewal coverage was added: cached tokens are refreshed when
+  they are inside the configured skew window, the feed adapter invalidates the
+  cache and retries once after `401`, and non-`401` errors are not retried.
+- The test suite passes with 44 tests.
 
 Next checkpoint:
 
-- Verify token renewal by forcing an expired or invalid cached token and
-  confirming one successful retry.
-- Once those failure paths are verified, remove the temporary local onboarding
-  engine calls and onboarding persistence from `token-svc`.
+- Remove the temporary local onboarding engine calls and onboarding persistence
+  from `token-svc`.
 
 ## Next Implementation Checklist
 
-1. Verify token renewal by forcing an expired/invalid cached token and
-   confirming one successful retry.
-2. Optionally run a manual duplicate-delivery smoke test by resetting the
+1. Optionally run a manual duplicate-delivery smoke test by resetting the
    stored HTTP feed cursor and confirming the same behavior against a live
    database.
+2. Optionally run a manual token-renewal smoke test by forcing an invalid
+   cached service JWT and confirming one successful retry against live
+   `token-svc`.
 3. Remove local onboarding state handling from `token-svc`:
    `OnboardingProcess`, local engine, rules, repository, and temporary
    `DefaultUserService` calls.
@@ -308,10 +310,10 @@ The script provisions:
 
 The following are not implemented yet:
 
-- Token-renewal smoke verification after forcing an expired/invalid cached
-  service JWT.
 - Manual duplicate-delivery smoke verification by resetting the HTTP feed
   cursor in a live database.
+- Manual token-renewal smoke verification after forcing an expired/invalid
+  cached service JWT.
 - Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
 - Removal of onboarding code from `token-svc`.

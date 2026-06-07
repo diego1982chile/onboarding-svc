@@ -50,4 +50,26 @@ class TokenServiceAccessTokenProviderTest {
         provider.invalidate();
         assertThat(provider.authorizationHeader(), is("Bearer token-2"));
     }
+
+    @Test
+    void shouldRefreshTokenWhenItIsInsideRefreshSkew() {
+        TokenAuthRestClient restClient = mock(TokenAuthRestClient.class);
+        when(restClient.clientCredentials("onboarding-svc", "secret", "token.identity-events.read"))
+                .thenReturn(
+                        new AccessTokenResource("token-1", "Bearer", 30L),
+                        new AccessTokenResource("token-2", "Bearer", 3600L)
+                );
+
+        TokenServiceAccessTokenProvider provider = new TokenServiceAccessTokenProvider(restClient);
+        provider.clientId = "onboarding-svc";
+        provider.clientSecret = "secret";
+        provider.scope = "token.identity-events.read";
+        provider.refreshSkewSeconds = 60L;
+
+        assertThat(provider.authorizationHeader(), is("Bearer token-1"));
+        assertThat(provider.authorizationHeader(), is("Bearer token-2"));
+
+        verify(restClient, times(2))
+                .clientCredentials("onboarding-svc", "secret", "token.identity-events.read");
+    }
 }
