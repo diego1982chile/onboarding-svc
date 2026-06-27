@@ -4,8 +4,8 @@
 
 ```text
 REGISTRATION
-IDENTITY_CHECK
-PLAN_SELECTION
+EMAIL_VERIFICATION
+PROFILE_CREATION
 ```
 
 Step statuses:
@@ -16,10 +16,76 @@ CURRENT
 PENDING
 ```
 
-## Public Train
+## Start Or Resume
+
+The UI should start onboarding by asking for the user's email and then calling:
 
 ```http
-GET /onboarding-service/api/onboarding/public/train
+POST /onboarding-service/api/onboarding/start
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+`onboarding-svc` answers from its local onboarding projection, which is fed by
+identity and profile events. It must not call `token-svc` synchronously to look
+up the email.
+
+Example response for a new email:
+
+```json
+{
+  "email": "user@example.com",
+  "registrationId": null,
+  "state": "NEW",
+  "nextAction": "COLLECT_PASSWORD",
+  "train": {
+    "username": null,
+    "currentState": null,
+    "currentStep": "REGISTRATION",
+    "steps": [
+      {
+        "key": "REGISTRATION",
+        "label": "Registro",
+        "status": "CURRENT"
+      },
+      {
+        "key": "EMAIL_VERIFICATION",
+        "label": "Verifica tu correo",
+        "status": "PENDING"
+      },
+      {
+        "key": "PROFILE_CREATION",
+        "label": "Crea tu perfil",
+        "status": "PENDING"
+      }
+    ]
+  }
+}
+```
+
+Initial `nextAction` values:
+
+```text
+COLLECT_PASSWORD
+SHOW_EMAIL_VERIFICATION_PENDING
+GO_TO_LOGIN
+```
+
+`COLLECT_PASSWORD` means onboarding has no local process for the email yet.
+`SHOW_EMAIL_VERIFICATION_PENDING` means a registration exists but identity has
+not emitted `EMAIL_VERIFIED` yet. `GO_TO_LOGIN` means email verification is
+already complete for that email; after login, the UI should use the
+authenticated train.
+
+## Anonymous Train
+
+```http
+GET /onboarding-service/api/onboarding/train
 ```
 
 ```json
@@ -34,13 +100,13 @@ GET /onboarding-service/api/onboarding/public/train
       "status": "CURRENT"
     },
     {
-      "key": "IDENTITY_CHECK",
-      "label": "Comprueba tu identidad",
+      "key": "EMAIL_VERIFICATION",
+      "label": "Verifica tu correo",
       "status": "PENDING"
     },
     {
-      "key": "PLAN_SELECTION",
-      "label": "Elige tu plan",
+      "key": "PROFILE_CREATION",
+      "label": "Crea tu perfil",
       "status": "PENDING"
     }
   ]
@@ -50,11 +116,13 @@ GET /onboarding-service/api/onboarding/public/train
 ## Registration Status
 
 ```http
-GET /onboarding-service/api/onboarding/public/{registrationId}/status
+GET /onboarding-service/api/onboarding/registrations/{registrationId}/status
 ```
 
-Before email confirmation, the current step is `REGISTRATION`. After identity
-confirms the registration, the current step is `IDENTITY_CHECK`.
+Before the registration form is submitted, the current step is `REGISTRATION`.
+After the account is created and the confirmation email is sent, the current
+step is `EMAIL_VERIFICATION`. After identity confirms the registration, the
+current step is `PROFILE_CREATION`.
 
 ## Authenticated Train
 
@@ -65,4 +133,10 @@ Authorization: Bearer <access-token>
 
 The endpoint requires the `USER` or `ADMIN` role. In the current identity-only
 scope, a valid access token implies that email confirmation is complete, so the
-train starts at `IDENTITY_CHECK`.
+train starts at `PROFILE_CREATION`.
+
+`PROFILE_CREATION` collects the minimum information needed to create the initial
+profile: name, birth date, and location.
+
+Plan selection, payment, active subscriptions, media uploads, profile
+publication, and commercial publication-readiness checks are outside onboarding.

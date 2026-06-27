@@ -51,6 +51,17 @@ class OnboardingEngineTest {
     }
 
     @Test
+    void shouldAdvanceEmailVerifiedUserToProfileCreated() {
+        String username = "profile.created.user@example.com";
+
+        onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
+        onboardingEngine.applyEvent(OnboardingEvent.emailVerified(username));
+        onboardingEngine.applyEvent(OnboardingEvent.profileCreated(username));
+
+        assertThat(onboardingEngine.getCurrentState(username), is(OnboardingState.PROFILE_CREATED));
+    }
+
+    @Test
     void shouldKeepStateWhenSameEventIsAppliedTwice() {
         String username = "idempotent.user@example.com";
 
@@ -64,7 +75,7 @@ class OnboardingEngineTest {
     void shouldRejectInvalidTransition() {
         OnboardingEvent event = new OnboardingEvent(
                 "jump.user@example.com",
-                OnboardingEventType.PLAN_SELECTED,
+                OnboardingEventType.PROFILE_CREATED,
                 Instant.now()
         );
 

@@ -1,17 +1,35 @@
+version: '3.8'
 services:
-  localstack:
-    image: localstack/localstack:3.8
-    container_name: onboarding-localstack
+  onboarding-svc:
+    build:
+      context: target/quarkus-app
+      dockerfile: ${PWD}/src/main/docker/Dockerfile.local
+    container_name: container_onboarding-svc
     ports:
-      - "4566:4566"
+      - "9093:8080"
+      - "8013:8000"
     environment:
-      SERVICES: sns,sqs
-      AWS_DEFAULT_REGION: us-east-1
-      EDGE_PORT: 4566
-      PERSISTENCE: "1"
+      QUARKUS_PROFILE: docker
+      JAVA_DEBUG: "true"
+      JAVA_DEBUG_PORT: "*:8000"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:8088,http://127.0.0.1:8088,http://localhost:8000,http://127.0.0.1:8000}
+      JWT_PUBLIC_KEY_LOCATION: ${JWT_PUBLIC_KEY_LOCATION:-http://host.docker.internal:9091/token-service/api/.well-known/jwks.json}
+      JWT_ISSUER: ${JWT_ISSUER:-https://apis.internal.dsoto.cl}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-onboarding-svc}
+      TOKEN_SERVICE_BASE_URL: ${TOKEN_SERVICE_BASE_URL:-http://host.docker.internal:9091/token-service}
+      PROFILE_SERVICE_BASE_URL: ${PROFILE_SERVICE_BASE_URL:-http://host.docker.internal:9092/profile-service}
+      TOKEN_SERVICE_CLIENT_ID: ${TOKEN_SERVICE_CLIENT_ID:-onboarding-svc}
+      TOKEN_SERVICE_CLIENT_SECRET: ${TOKEN_SERVICE_CLIENT_SECRET:-test-onboarding-secret}
+      TOKEN_SERVICE_IDENTITY_EVENTS_SCOPE: ${TOKEN_SERVICE_IDENTITY_EVENTS_SCOPE:-token.identity-events.read}
+      PROFILE_SERVICE_PROFILE_EVENTS_SCOPE: ${PROFILE_SERVICE_PROFILE_EVENTS_SCOPE:-profile.profile-events.read}
+      IDENTITY_EVENTS_FEED_ENABLED: ${IDENTITY_EVENTS_FEED_ENABLED:-true}
+      PROFILE_EVENTS_FEED_ENABLED: ${PROFILE_EVENTS_FEED_ENABLED:-false}
+      IDENTITY_EVENTS_FEED_POLL_EVERY: ${IDENTITY_EVENTS_FEED_POLL_EVERY:-5s}
+      PROFILE_EVENTS_FEED_POLL_EVERY: ${PROFILE_EVENTS_FEED_POLL_EVERY:-5s}
+      IDENTITY_EVENTS_FEED_LIMIT: ${IDENTITY_EVENTS_FEED_LIMIT:-100}
+      PROFILE_EVENTS_FEED_LIMIT: ${PROFILE_EVENTS_FEED_LIMIT:-100}
+      IDENTITY_EVENTS_FEED_SOURCE: ${IDENTITY_EVENTS_FEED_SOURCE:-token-svc}
+      PROFILE_EVENTS_FEED_SOURCE: ${PROFILE_EVENTS_FEED_SOURCE:-profile-svc}
+      IDENTITY_EVENTS_CONSUMER_ENABLED: ${IDENTITY_EVENTS_CONSUMER_ENABLED:-false}
     volumes:
-      - localstack-data:/var/lib/localstack
-      - /var/run/docker.sock:/var/run/docker.sock
-
-volumes:
-  localstack-data:
+      - ${PWD}/db:/deployments/db

@@ -11,9 +11,11 @@ Use technical layers under the service package prefix:
 cl.dsoto.<service>
   clients
   entities
-  eventfeeds
-  identity/events/adapters
-  identity/events
+  events/feed
+  events/identity/adapters
+  events/identity
+  events/profile/adapters
+  events/profile
   model
   repositories
   services
@@ -24,10 +26,11 @@ cl.dsoto.<service>
 ```
 
 Use a capability prefix when a package is specific to an upstream or business
-area. For example, identity events live under:
+area. For example, identity and profile events live under:
 
 ```text
-cl.dsoto.onboarding.identity.events
+cl.dsoto.onboarding.events.identity
+cl.dsoto.onboarding.events.profile
 ```
 
 Use `clients` for outbound REST client interfaces, client-token helpers, and
@@ -38,6 +41,7 @@ event package.
 ```text
 clients/TokenAuthRestClient.java
 clients/TokenIdentityEventFeedRestClient.java
+clients/ProfileEventFeedRestClient.java
 clients/TokenServiceAccessTokenProvider.java
 clients/resources/AccessTokenResource.java
 ```
@@ -48,26 +52,32 @@ names that make payloads look like clients.
 
 Use capability-specific `adapters` packages when a class translates an external
 transport into an application capability. For example,
-`identity.events.adapters.TokenIdentityEventFeedAdapter` wraps the raw token
+`events.identity.adapters.TokenIdentityEventFeedAdapter` wraps the raw token
 REST client with authorization, token renewal, one retry after `401`, and maps
 the result into the identity event feed consumed by the poller.
+`events.profile.adapters.ProfileEventFeedAdapter` applies the same boundary for
+the profile event feed.
 
-Use `eventfeeds` for generic feed polling mechanics such as cursor loading,
+Use `events.feed` for generic feed polling mechanics such as cursor loading,
 cursor persistence, retry orchestration, and scheduler/poller classes.
 
 ```text
-eventfeeds/EventFeedPoller.java
-eventfeeds/EventFeedCursorStore.java
+events/feed/EventFeedPoller.java
+events/feed/EventFeedCursorStore.java
 ```
 
 Domain-specific event payloads and handlers should remain in their capability
 package. For identity:
 
 ```text
-identity/events/IdentityEventFeedItem.java
-identity/events/IdentityEventFeedPage.java
-identity/events/IdentityEventHandler.java
-identity/events/adapters/TokenIdentityEventFeedAdapter.java
+events/identity/IdentityEventFeedItem.java
+events/identity/IdentityEventFeedPage.java
+events/identity/IdentityEventHandler.java
+events/identity/adapters/TokenIdentityEventFeedAdapter.java
+events/profile/ProfileEventFeedItem.java
+events/profile/ProfileEventFeedPage.java
+events/profile/ProfileEventHandler.java
+events/profile/adapters/ProfileEventFeedAdapter.java
 ```
 
 ## Web Services
@@ -85,6 +95,67 @@ transport-level `Response` handling.
 
 Do not name endpoint implementations `*Resource`. Reserve `Resource` for API
 payload objects.
+
+## Configuration Profiles
+
+Use separate Quarkus property files per profile, matching the convention already
+used by `token-svc`.
+
+```text
+application.properties
+application-dev.properties
+application-test.properties
+application-docker.properties
+```
+
+`application.properties` should contain common configuration and environment
+variable bindings. Avoid keeping profile-specific `%dev.*` or `%test.*` blocks
+in the base file unless there is a narrow reason.
+
+Development and test profiles may define explicit dummy values for local
+operation, including service-to-service client secrets. Docker and production
+profiles must read secrets from environment variables or an external secret
+source, without safe-looking defaults.
+
+For example:
+
+```properties
+# application.properties
+token.service.client-secret=${TOKEN_SERVICE_CLIENT_SECRET:}
+
+# application-dev.properties
+token.service.client-secret=dev-onboarding-secret
+
+# application-test.properties
+token.service.client-secret=test-onboarding-secret
+
+# application-docker.properties
+token.service.client-secret=${TOKEN_SERVICE_CLIENT_SECRET}
+```
+
+Real secrets must never be committed. Local defaults are only for development
+and tests.
+
+## Technical Scopes
+
+Service-to-service permissions should use capability/action names that read as
+technical scopes.
+
+```text
+token.identity-events.read
+```
+
+For now, these technical scopes may be transported in the JWT authorities/groups
+claim and checked with `@RolesAllowed`, together with human roles when needed.
+
+```java
+@RolesAllowed({"ADMIN", "token.identity-events.read"})
+```
+
+This is a pragmatic Quarkus/Jakarta Security convention. Conceptually,
+`ADMIN` is a human role while `token.identity-events.read` is a technical
+scope. If authorization grows more complex, introduce explicit scope handling
+later instead of overloading endpoints with manual claim parsing.
 
 ## Web Service Resources
 
@@ -170,13 +241,15 @@ HTTP/API contracts from depending on database records.
 Use capability-specific packages for integration contracts and adapters.
 
 ```text
-identity/events
-identity/events/sqs
+events/identity
+events/identity/sqs
+events/profile
 ```
 
-Do not put all feed infrastructure under `identity.events`. The poll/cursor
-mechanics are shared infrastructure. Identity-specific feed items, mappers,
-handlers, and adapters remain under `identity.events`.
+Do not put feed infrastructure directly under `events.identity` or
+`events.profile`. The poll/cursor mechanics are shared infrastructure under
+`events.feed`. Capability-specific feed items, mappers, handlers, and adapters
+remain under their capability package.
 
 Event envelope classes should stay close to the adapter or capability they
 belong to. If a class is only needed by an SNS/SQS prototype, keep it under the
@@ -186,6 +259,19 @@ Only explicit user-facing flows should emit identity events. Administrative,
 support, migration, and internal maintenance actions should not emit onboarding
 events by default.
 
+## Event Feed Sources
+
+Services that expose polling-based event feeds should follow the
+[Event Feed Source Contract](event-feed-source-contract.md).
+
+The source side of a feed owns a durable append-only event log, a cursor-based
+internal HTTP endpoint, event payload versioning, technical-scope authorization,
+and retention rules. The consumer side owns checkpoints and business handling.
+
+Feed sources should use `items`, `cursor`, `nextCursor`, and `hasMore` for HTTP
+feed payloads. Avoid mixing source contracts such as `events`/`sequence` with
+consumer contracts that expect `items`/`cursor`.
+
 ## Tests
 
 Mirror the production package structure in tests.
@@ -193,7 +279,10 @@ Mirror the production package structure in tests.
 ```text
 src/test/java/cl/dsoto/onboarding/webservice/impl
 src/test/java/cl/dsoto/onboarding/services
-src/test/java/cl/dsoto/onboarding/identity/events
+src/test/java/cl/dsoto/onboarding/events/feed
+src/test/java/cl/dsoto/onboarding/events/identity
+src/test/java/cl/dsoto/onboarding/events/profile
+src/test/java/cl/dsoto/onboarding/events/identity
 ```
 
 Use `@QuarkusTest` for service and webservice behavior tests, and keep assertions

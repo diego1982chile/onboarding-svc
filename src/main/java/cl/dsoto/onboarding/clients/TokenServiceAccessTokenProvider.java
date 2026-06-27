@@ -6,6 +6,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.time.Instant;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @ApplicationScoped
 public class TokenServiceAccessTokenProvider {
@@ -24,28 +26,36 @@ public class TokenServiceAccessTokenProvider {
     @ConfigProperty(name = "token.service.access-token-refresh-skew-seconds")
     long refreshSkewSeconds;
 
-    private volatile CachedAccessToken cachedAccessToken;
+    private final Map<String, CachedAccessToken> cachedAccessTokens = new ConcurrentHashMap<>();
 
     public TokenServiceAccessTokenProvider(@RestClient TokenAuthRestClient tokenAuthRestClient) {
         this.tokenAuthRestClient = tokenAuthRestClient;
     }
 
     public String authorizationHeader() {
-        return "Bearer " + currentToken();
+        return authorizationHeader(scope);
+    }
+
+    public String authorizationHeader(String scope) {
+        return "Bearer " + currentToken(scope);
     }
 
     public void invalidate() {
-        cachedAccessToken = null;
+        invalidate(scope);
     }
 
-    private String currentToken() {
-        CachedAccessToken token = cachedAccessToken;
+    public void invalidate(String scope) {
+        cachedAccessTokens.remove(scope);
+    }
+
+    private String currentToken(String scope) {
+        CachedAccessToken token = cachedAccessTokens.get(scope);
         if (token != null && token.isValid(refreshSkewSeconds)) {
             return token.value();
         }
 
-        synchronized (this) {
-            token = cachedAccessToken;
+        synchronized (cachedAccessTokens) {
+            token = cachedAccessTokens.get(scope);
             if (token != null && token.isValid(refreshSkewSeconds)) {
                 return token.value();
             }
@@ -56,11 +66,12 @@ public class TokenServiceAccessTokenProvider {
             }
 
             long expiresIn = response.expiresIn() == null ? 0L : response.expiresIn();
-            cachedAccessToken = new CachedAccessToken(
+            CachedAccessToken refreshedToken = new CachedAccessToken(
                     response.accessToken(),
                     Instant.now().plusSeconds(expiresIn)
             );
-            return cachedAccessToken.value();
+            cachedAccessTokens.put(scope, refreshedToken);
+            return refreshedToken.value();
         }
     }
 

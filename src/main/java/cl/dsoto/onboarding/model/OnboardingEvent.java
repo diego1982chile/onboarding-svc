@@ -36,4 +36,8 @@ public record OnboardingEvent(
     public static OnboardingEvent emailVerified(String username) {
         return new OnboardingEvent(username, OnboardingEventType.EMAIL_VERIFIED, Instant.now(), null);
     }
+
+    public static OnboardingEvent profileCreated(String username) {
+        return new OnboardingEvent(username, OnboardingEventType.PROFILE_CREATED, Instant.now(), null);
+    }
 }

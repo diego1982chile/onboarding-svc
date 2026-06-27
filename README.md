@@ -2,7 +2,8 @@
 
 Product onboarding orchestration service built with Quarkus.
 
-See [architecture](docs/architecture.md) and the
+See the current scope decision in [latest](docs/latest.md),
+[architecture](docs/architecture.md), and the
 [onboarding train contract](docs/onboarding-train-contract.md). Shared package
 and naming rules are documented in
 [service conventions](docs/service-conventions.md).
@@ -27,19 +28,67 @@ IDENTITY_EVENTS_SQS_ENDPOINT_OVERRIDE=
 IDENTITY_EVENTS_SQS_POLL_EVERY=1s
 IDENTITY_EVENTS_SQS_MAX_MESSAGES=10
 IDENTITY_EVENTS_SQS_WAIT_TIME_SECONDS=20
+TOKEN_SERVICE_BASE_URL=http://localhost:9091/token-service
+TOKEN_SERVICE_CLIENT_ID=onboarding-svc
+TOKEN_SERVICE_CLIENT_SECRET=
+TOKEN_SERVICE_IDENTITY_EVENTS_SCOPE=token.identity-events.read
+IDENTITY_EVENTS_FEED_ENABLED=false
+IDENTITY_EVENTS_FEED_POLL_EVERY=5s
+IDENTITY_EVENTS_FEED_LIMIT=100
+IDENTITY_EVENTS_FEED_SOURCE=token-svc
+PROFILE_SERVICE_BASE_URL=http://localhost:9092/profile-service
+PROFILE_SERVICE_PROFILE_EVENTS_SCOPE=profile.profile-events.read
+PROFILE_EVENTS_FEED_ENABLED=false
+PROFILE_EVENTS_FEED_POLL_EVERY=5s
+PROFILE_EVENTS_FEED_LIMIT=100
+PROFILE_EVENTS_FEED_SOURCE=profile-svc
 ```
 
 The `dev` profile uses an in-memory H2 datasource so the service can run
 locally without an external database.
 
-## Local SNS/SQS
+## Docker
 
-The local event transport uses LocalStack for SNS and SQS.
+Package the service before building the local container image:
+
+```shell script
+./mvnw package -Pproduction
+```
+
+Run the service container:
+
+```shell script
+docker compose up --build
+```
+
+The local Docker compose file uses `test-onboarding-secret` as the default
+service-to-service secret. If you override it, the value must match the secret
+registered in local `token-svc` for the `onboarding-svc` technical client:
+
+```shell script
+# token-svc
+ONBOARDING_SVC_CLIENT_SECRET=test-onboarding-secret docker compose up --build
+
+# onboarding-svc
+TOKEN_SERVICE_CLIENT_SECRET=test-onboarding-secret docker compose up --build
+```
+
+The Docker compose path runs the HTTP event feed integration. It does not start
+LocalStack.
+
+## Local SNS/SQS Prototype
+
+The SNS/SQS path is a validated prototype and future transport option. It is
+not the default onboarding event path.
 
 Start LocalStack:
 
 ```shell script
-docker compose up -d localstack
+docker run --rm --name onboarding-localstack \
+  -p 4566:4566 \
+  -e SERVICES=sns,sqs \
+  -e AWS_DEFAULT_REGION=us-east-1 \
+  localstack/localstack:3.8
 ```
 
 Provision the identity events topic, onboarding queue, subscription, and DLQ:

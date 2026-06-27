@@ -23,7 +23,8 @@ The SNS/SQS path was implemented and smoke-tested locally, but it is not the
 immediate target for the next migration step. For the current product scope, it
 adds more infrastructure than the first identity-only event flow needs.
 
-The immediate target is an incremental HTTP event feed:
+The immediate target is an incremental HTTP event feed. Feed sources should
+follow the shared [Event Feed Source Contract](event-feed-source-contract.md):
 
 ```text
 token-svc
@@ -43,21 +44,17 @@ The SNS/SQS implementation remains a validated prototype and future option if
 fan-out, durable queueing, DLQ operations, or multiple independent consumers
 justify the extra infrastructure.
 
-KYC is expected to be an external provider integration owned by
-`onboarding-svc`, not by `token-svc`. KYC callbacks/webhooks should be
-translated inside `onboarding-svc` into onboarding events such as
-`KYC_APPROVED` or `KYC_REJECTED`.
+Age verification is not part of account onboarding. Full KYC is explicitly out
+of scope for the MVP; see [ADR-012 - Age Verification](adr-012-age-verification.md).
 
-Subscription plan and billing ownership is separate. `onboarding-svc` may own a
-temporary plan-selection catalog while the product is simple, but payment
-provider callbacks should enter the service that owns subscriptions. If a
-future `subscription-svc` exists, `onboarding-svc` should consume subscription
-outcomes from that service rather than handling payment provider webhooks
-directly.
+Subscription plan and billing ownership is separate and outside onboarding.
+Payment provider callbacks should enter the service that owns subscriptions.
+`onboarding-svc` should not handle payment provider webhooks or model
+subscription outcomes as onboarding progress.
 
 Camel Quarkus is not part of the initial migration. It should be reconsidered
-when KYC, Stripe, or other integrations create multiple routes that benefit
-from shared transformation, routing, or error-handling behavior.
+when future provider integrations create multiple routes that benefit from
+shared transformation, routing, or error-handling behavior.
 
 ## Event Contract
 
@@ -68,9 +65,9 @@ message-queue envelope.
 
 ```json
 {
-  "events": [
+  "items": [
     {
-      "sequence": 126,
+      "cursor": 126,
       "eventId": "uuid",
       "eventType": "USER_REGISTERED",
       "subject": "user@example.com",
@@ -78,7 +75,8 @@ message-queue envelope.
       "registrationId": "uuid"
     }
   ],
-  "nextCursor": 126
+  "nextCursor": 126,
+  "hasMore": false
 }
 ```
 
@@ -87,7 +85,7 @@ The intended model names for the HTTP feed are:
 - `IdentityEventFeedPage`
 - `IdentityEventFeedItem`
 
-`IdentityEventFeedItem.sequence` is the cursor position. `eventId` is still
+`IdentityEventFeedItem.cursor` is the cursor position. `eventId` is still
 required for idempotent processing.
 
 The existing `IdentityEventEnvelope` belongs to the validated SNS/SQS
@@ -113,7 +111,9 @@ Initial event types:
 - `USER_REGISTERED`
 - `EMAIL_VERIFIED`
 
-Future event types may include KYC, profile, plan, and subscription outcomes.
+Future event types may include profile creation outcomes. Plan, subscription,
+payment, media upload, profile publication, and age verification should not be
+modeled as onboarding events in the MVP.
 
 Consumers must be idempotent because feed polling can retry pages and future
 queue-based transports can produce duplicate messages. Processed `eventId`
@@ -127,25 +127,41 @@ of the onboarding domain model.
 The intended immediate flow is:
 
 ```text
-EventFeedPoller
+IdentityEventFeedPoller
+  -> EventFeedPoller
   -> TokenIdentityEventFeedAdapter
   -> IdentityEventHandler
   -> IdentityEventMapper
+  -> OnboardingEngine
+
+ProfileEventFeedPoller
+  -> EventFeedPoller
+  -> ProfileEventFeedAdapter
+  -> ProfileEventHandler
+  -> ProfileEventMapper
   -> OnboardingEngine
 ```
 
 Responsibilities:
 
-- `EventFeedPoller` owns polling cadence, cursor loading, cursor persistence,
-  and retry behavior. It should stay generic enough to avoid creating one
-  poller class per future domain.
+- `EventFeedPoller` owns generic page iteration, cursor loading, cursor
+  persistence, and advancing the cursor only after item handling succeeds.
+- Capability-specific scheduler classes, such as `IdentityEventFeedPoller` and
+  `ProfileEventFeedPoller`, own their enable flags, cadence, source names, and
+  logging.
 - `TokenIdentityEventFeedAdapter` adapts the identity feed exposed by
   `token-svc` into the application flow. It uses the raw token REST client,
   adds the technical JWT, renews the cached token after `401`, retries once,
   and returns `IdentityEventFeedPage` / `IdentityEventFeedItem` values.
+- `ProfileEventFeedAdapter` applies the same adapter boundary for
+  `profile-svc`, using the `profile.profile-events.read` technical scope and
+  returning `ProfileEventFeedPage` / `ProfileEventFeedItem` values.
 - `IdentityEventHandler` owns application coordination: idempotency by
   `eventId`, mapping the external identity event, and invoking the onboarding
   engine inside the correct transaction boundary.
+- `ProfileEventHandler` owns the same application coordination for profile
+  events. Initially it maps `PROFILE_CREATED` into
+  `OnboardingEventType.PROFILE_CREATED`.
 - `IdentityEventMapper` converts the external feed item into the
   internal `OnboardingEvent`.
 - `OnboardingEngine` owns only onboarding business rules and state
@@ -174,26 +190,11 @@ Avoid duplicating the whole polling stack for every future integration. The
 poll/cursor mechanics are generic infrastructure; event contracts and handlers
 remain domain-specific.
 
-Expected future shape:
+The first second feed consumer now exists for profile events. This validates
+the reusable poll/cursor mechanics without extracting a shared library yet.
 
-```text
-feed/EventFeedPoller
-  -> TokenIdentityEventFeedAdapter
-  -> IdentityEventHandler
-
-webhook/KycWebhookResource
-  -> KycEventHandler
-
-feed/EventFeedPoller
-  -> SubscriptionEventFeedClient
-  -> SubscriptionEventHandler
-```
-
-KYC provider callbacks are expected to enter `onboarding-svc` directly. Billing
-provider callbacks should enter whichever service owns subscriptions. If that
-is a future `subscription-svc`, `onboarding-svc` can reuse the generic
-poll/cursor infrastructure with a subscription-specific feed client and
-handler, without duplicating the polling stack.
+Billing provider callbacks should enter whichever service owns subscriptions,
+not `onboarding-svc`.
 
 ## Migration Order
 
@@ -249,10 +250,10 @@ Completed:
 - The HTTP feed path was smoke-tested locally with both services running:
   public registration in `token-svc`, email confirmation in `token-svc`, feed
   polling in `onboarding-svc`, and onboarding status advancing to
-  `EMAIL_VERIFIED` / `IDENTITY_CHECK`.
+  `EMAIL_VERIFIED` / `PROFILE_CREATION`.
 - Feed clients and polling classes were reorganized so outbound clients live in
-  `clients`, generic polling/cursor infrastructure lives in `eventfeeds`, and
-  identity feed payloads remain in `identity.events`.
+  `clients`, generic polling/cursor infrastructure lives in `events.feed`, and
+  identity feed payloads remain in `events.identity`.
 - Automated feed idempotency coverage was added: when the feed returns an
   already processed event after a cursor reset/rollback, `IdentityEventHandler`
   ignores it by `eventId` and `EventFeedPoller` still advances the cursor.
@@ -267,12 +268,27 @@ Completed:
   from `token-svc`: public registration created `USER_REGISTERED`, email
   confirmation created `EMAIL_VERIFIED`, `onboarding-svc` consumed both through
   the HTTP feed poller, and the public onboarding status advanced to
-  `EMAIL_VERIFIED` / `IDENTITY_CHECK`.
-- The test suite passes with 44 tests.
+  `EMAIL_VERIFIED` / `PROFILE_CREATION`.
+- The permanent REST endpoint names were aligned around the onboarding
+  resource: anonymous train lookup uses `GET /onboarding/train`, registration
+  status uses `GET /onboarding/registrations/{registrationId}/status`, and the
+  authenticated train remains `GET /onboarding/me/train`.
+- `EventFeedPoller` was generalized so identity and profile feeds reuse the
+  same page/cursor mechanics while keeping domain payloads, handlers, and
+  adapters in capability-specific packages.
+- `onboarding-svc` now has a profile event feed client, adapter, scheduler,
+  mapper, handler, processed-event idempotency table, and configuration for
+  consuming `PROFILE_CREATED` from `profile-svc`.
+- The token provider now caches technical JWTs per requested scope, so
+  `token.identity-events.read` and `profile.profile-events.read` do not share a
+  cached token incorrectly.
+- The test suite passes with 53 tests.
 
 Next checkpoint:
 
-- Revisit REST endpoint naming/alignment only for permanent API surfaces.
+- Keep the HTTP feed path as the production target and leave SNS/SQS as a
+  validated future transport option unless fan-out or DLQ operations are
+  required.
 
 ## Next Implementation Checklist
 
@@ -280,12 +296,14 @@ Next checkpoint:
    stored HTTP feed cursor and confirming the same behavior against a live
    database.
 2. Optionally run a manual token-renewal smoke test by forcing an invalid
-   cached service JWT and confirming one successful retry against live
-   `token-svc`.
+   cached service JWT and confirming one successful retry against live feed
+   sources.
 3. Keep `token-svc` event emission selective: public registration and email
    confirmation flows emit identity events; administrative/support/migration
    actions do not emit onboarding events by default.
-4. Revisit REST endpoint naming/alignment only for permanent API surfaces.
+4. Implement the source-side profile event log and
+   `GET /api/internal/profile-events?after=<cursor>&limit=<n>` in
+   `profile-svc`, protected by `profile.profile-events.read`.
 
 Identity events from `token-svc` must be selective. The feed is not a general
 user audit log. Only explicit user-facing onboarding flows should append
@@ -320,8 +338,6 @@ The following are not implemented yet:
   cached service JWT.
 - Transactional outbox publishing to SNS.
 - Camel Quarkus routes.
-- Removal of onboarding code from `token-svc`.
-
 Direct REST service-to-service event delivery is not planned. The planned HTTP
 approach is an incremental event feed with cursor and idempotency, not a
 synchronous callback from `token-svc` to `onboarding-svc`.

@@ -10,5 +10,7 @@ public interface OnboardingTrainService {
 
     OnboardingTrainResource getAuthenticatedTrain(String username);
 
+    OnboardingTrainResource getPublicTrainForUsername(String username);
+
     Optional<OnboardingTrainResource> getRegistrationStatus(String registrationId);
 }

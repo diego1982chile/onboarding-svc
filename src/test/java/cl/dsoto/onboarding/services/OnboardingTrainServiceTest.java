@@ -55,14 +55,14 @@ class OnboardingTrainServiceTest {
         OnboardingTrainResource view = trainService.getAuthenticatedTrain(username);
 
         assertThat(view.getCurrentState(), is(OnboardingState.REGISTERED));
-        assertThat(view.getCurrentStep(), is(OnboardingTrainStep.REGISTRATION));
-        assertThat(view.getSteps().get(0).getStatus(), is(OnboardingTrainStepStatus.CURRENT));
-        assertThat(view.getSteps().get(1).getStatus(), is(OnboardingTrainStepStatus.PENDING));
+        assertThat(view.getCurrentStep(), is(OnboardingTrainStep.EMAIL_VERIFICATION));
+        assertThat(view.getSteps().get(0).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
+        assertThat(view.getSteps().get(1).getStatus(), is(OnboardingTrainStepStatus.CURRENT));
         assertThat(view.getSteps().get(2).getStatus(), is(OnboardingTrainStepStatus.PENDING));
     }
 
     @Test
-    void shouldShowIdentityCheckAsCurrentWhenEmailIsVerified() {
+    void shouldShowProfileCreationAsCurrentWhenEmailIsVerified() {
         String username = "email.verified.user@example.com";
 
         onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
@@ -71,10 +71,27 @@ class OnboardingTrainServiceTest {
         OnboardingTrainResource view = trainService.getAuthenticatedTrain(username);
 
         assertThat(view.getCurrentState(), is(OnboardingState.EMAIL_VERIFIED));
-        assertThat(view.getCurrentStep(), is(OnboardingTrainStep.IDENTITY_CHECK));
+        assertThat(view.getCurrentStep(), is(OnboardingTrainStep.PROFILE_CREATION));
         assertThat(view.getSteps().get(0).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
-        assertThat(view.getSteps().get(1).getStatus(), is(OnboardingTrainStepStatus.CURRENT));
-        assertThat(view.getSteps().get(2).getStatus(), is(OnboardingTrainStepStatus.PENDING));
+        assertThat(view.getSteps().get(1).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
+        assertThat(view.getSteps().get(2).getStatus(), is(OnboardingTrainStepStatus.CURRENT));
+    }
+
+    @Test
+    void shouldShowAllStepsCompletedWhenProfileIsCreated() {
+        String username = "profile.created.user@example.com";
+
+        onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
+        onboardingEngine.applyEvent(OnboardingEvent.emailVerified(username));
+        onboardingEngine.applyEvent(OnboardingEvent.profileCreated(username));
+
+        OnboardingTrainResource view = trainService.getAuthenticatedTrain(username);
+
+        assertThat(view.getCurrentState(), is(OnboardingState.PROFILE_CREATED));
+        assertThat(view.getCurrentStep(), is(OnboardingTrainStep.PROFILE_CREATION));
+        assertThat(view.getSteps().get(0).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
+        assertThat(view.getSteps().get(1).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
+        assertThat(view.getSteps().get(2).getStatus(), is(OnboardingTrainStepStatus.COMPLETED));
     }
 
     @Test
@@ -94,6 +111,6 @@ class OnboardingTrainServiceTest {
         Optional<OnboardingTrainResource> view = trainService.getRegistrationStatus(registrationId);
 
         assertThat(view.isPresent(), is(true));
-        assertThat(view.orElseThrow().getCurrentStep(), is(OnboardingTrainStep.REGISTRATION));
+        assertThat(view.orElseThrow().getCurrentStep(), is(OnboardingTrainStep.EMAIL_VERIFICATION));
     }
 }

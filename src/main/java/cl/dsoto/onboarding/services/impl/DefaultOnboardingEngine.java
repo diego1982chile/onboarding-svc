@@ -78,6 +78,7 @@ public class DefaultOnboardingEngine implements OnboardingEngine {
         rules.register(new IdempotentOnboardingRule());
         rules.register(new UserRegisteredRule());
         rules.register(new EmailVerifiedRule());
+        rules.register(new ProfileCreatedRule());
         return rules;
     }
 

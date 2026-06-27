@@ -32,9 +32,7 @@ public class IdempotentOnboardingRule {
         return switch (eventType) {
             case USER_REGISTERED -> OnboardingState.REGISTERED.name();
             case EMAIL_VERIFIED -> OnboardingState.EMAIL_VERIFIED.name();
-            case KYC_APPROVED -> OnboardingState.KYC_APPROVED.name();
-            case PLAN_SELECTED -> OnboardingState.PLAN_SELECTED.name();
-            case PROFILE_COMPLETED -> OnboardingState.PROFILE_COMPLETED.name();
+            case PROFILE_CREATED -> OnboardingState.PROFILE_CREATED.name();
         };
     }
 }

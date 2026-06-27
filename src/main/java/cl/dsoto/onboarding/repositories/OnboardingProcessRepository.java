@@ -9,5 +9,7 @@ public interface OnboardingProcessRepository extends JpaRepository<OnboardingPro
 
     Optional<OnboardingProcessEntity> findByUsername(String username);
 
+    Optional<OnboardingProcessEntity> findByUsernameIgnoreCase(String username);
+
     Optional<OnboardingProcessEntity> findByRegistrationId(String registrationId);
 }

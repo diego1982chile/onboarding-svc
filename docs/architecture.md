@@ -10,7 +10,7 @@ Owned by this service:
 - Visible onboarding steps, labels, ordering, and statuses.
 - Mapping detailed capability states into the product onboarding train.
 - Public and authenticated onboarding views.
-- Future onboarding state transitions triggered by KYC, profile, and subscription
+- Future onboarding state transitions triggered by initial profile creation
   results.
 - Authorization of its API endpoints after validating access tokens issued by
   `token-svc`.
@@ -47,19 +47,25 @@ Base path:
 Endpoints:
 
 ```http
-GET /onboarding/public/train
-GET /onboarding/public/{registrationId}/status
+POST /onboarding/start
+GET /onboarding/train
+GET /onboarding/registrations/{registrationId}/status
 GET /onboarding/me/train
 ```
 
-The public train always starts at `REGISTRATION`. Query parameters such as
+The start endpoint is the email-first resume entry point for the UI. It reads
+only `onboarding-svc` local projection state populated by events from source
+services. It must not perform a synchronous identity lookup in `token-svc`.
+
+The anonymous train always starts at `REGISTRATION`. Query parameters such as
 `stage=email-confirmed` are not trusted to advance onboarding state.
 
 The registration status endpoint returns `404` when the identity service does
 not know the registration id.
 
-The two `/public` endpoints are anonymous and explicitly use `@PermitAll`.
-`/me/train` requires `USER` or `ADMIN`, validates the JWT against the JWKS
+The `/train` and `/registrations/{registrationId}/status` endpoints are
+anonymous and explicitly use `@PermitAll`. `/me/train` requires `USER` or
+`ADMIN`, validates the JWT against the JWKS
 published by `token-svc`, and uses the `sub` claim as the temporary user
 identifier.
 
@@ -71,7 +77,38 @@ token-svc JWKS endpoint -> distributes public key
 onboarding-svc -> validates issuer, audience, signature, expiration, and roles
 ```
 
-KYC, profile, and subscription integrations remain deferred.
+Profile integration remains deferred. Subscription, payment, media upload,
+profile publication, and publication-readiness checks are outside account
+onboarding. Age verification is not part of account onboarding; see
+[ADR-012 - Age Verification](adr-012-age-verification.md).
+
+## Onboarding State Machine Direction
+
+The onboarding train must not be treated as a fixed Java `switch` plus enum
+ordinal ordering. That approach already became misleading when age verification
+was moved out of onboarding.
+
+For the MVP, the desired direction is a simple declarative flow definition
+versioned in code, not a database-editable workflow engine.
+
+The flow definition should own:
+
+- Visible steps.
+- Step labels.
+- Step ordering.
+- The event or fact that completes each step.
+- How current, completed, and pending statuses are projected.
+
+The user process should persist durable onboarding facts or states, while the
+train projection should derive the visible step status from the flow definition.
+
+Age verification must not be modeled as an onboarding step or state.
+Subscription selection must not be modeled as an onboarding step. Publication
+eligibility belongs outside onboarding and should be evaluated by the publishing
+domain using profile, subscription, and age-verification information.
+
+This is intentionally not a decision to introduce a full workflow engine or
+database-configurable state machine for the MVP.
 
 ## Deferred State Ownership Migration
 

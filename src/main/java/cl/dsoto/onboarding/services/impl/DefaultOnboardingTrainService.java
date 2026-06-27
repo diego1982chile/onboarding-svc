@@ -44,6 +44,17 @@ public class DefaultOnboardingTrainService implements OnboardingTrainService {
     }
 
     @Override
+    public OnboardingTrainResource getPublicTrainForUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return getPublicTrain();
+        }
+
+        return onboardingProcessRepository.findByUsernameIgnoreCase(username)
+                .map(this::trainView)
+                .orElseGet(this::getPublicTrain);
+    }
+
+    @Override
     public Optional<OnboardingTrainResource> getRegistrationStatus(String registrationId) {
         if (registrationId == null || registrationId.isBlank()) {
             return Optional.empty();
@@ -69,17 +80,16 @@ public class DefaultOnboardingTrainService implements OnboardingTrainService {
                 currentStep,
                 List.of(
                         step(OnboardingTrainStep.REGISTRATION, "Registro", statusFor(OnboardingTrainStep.REGISTRATION, currentStep, currentState)),
-                        step(OnboardingTrainStep.IDENTITY_CHECK, "Comprueba tu identidad", statusFor(OnboardingTrainStep.IDENTITY_CHECK, currentStep, currentState)),
-                        step(OnboardingTrainStep.PLAN_SELECTION, "Elige tu plan", statusFor(OnboardingTrainStep.PLAN_SELECTION, currentStep, currentState))
+                        step(OnboardingTrainStep.EMAIL_VERIFICATION, "Verifica tu correo", statusFor(OnboardingTrainStep.EMAIL_VERIFICATION, currentStep, currentState)),
+                        step(OnboardingTrainStep.PROFILE_CREATION, "Crea tu perfil", statusFor(OnboardingTrainStep.PROFILE_CREATION, currentStep, currentState))
                 )
         );
     }
 
     private OnboardingTrainStep currentStepFor(OnboardingState currentState) {
         return switch (currentState) {
-            case REGISTERED -> OnboardingTrainStep.REGISTRATION;
-            case EMAIL_VERIFIED -> OnboardingTrainStep.IDENTITY_CHECK;
-            case KYC_APPROVED, PLAN_SELECTED, PROFILE_COMPLETED, READY_TO_PUBLISH -> OnboardingTrainStep.PLAN_SELECTION;
+            case REGISTERED -> OnboardingTrainStep.EMAIL_VERIFICATION;
+            case EMAIL_VERIFIED, PROFILE_CREATED -> OnboardingTrainStep.PROFILE_CREATION;
         };
     }
 
@@ -88,7 +98,7 @@ public class DefaultOnboardingTrainService implements OnboardingTrainService {
             OnboardingTrainStep currentStep,
             OnboardingState currentState
     ) {
-        if (currentState == OnboardingState.READY_TO_PUBLISH) {
+        if (currentState == OnboardingState.PROFILE_CREATED) {
             return OnboardingTrainStepStatus.COMPLETED;
         }
 

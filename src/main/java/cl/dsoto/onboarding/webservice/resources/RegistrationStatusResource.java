@@ -1,5 +1,6 @@
 package cl.dsoto.onboarding.webservice.resources;
 
+import cl.dsoto.onboarding.model.OnboardingState;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,6 +14,7 @@ public class RegistrationStatusResource {
     private OnboardingTrainResource train;
 
     public RegistrationStatusResource(OnboardingTrainResource train) {
-        this(train.getCurrentStep() != OnboardingTrainStep.REGISTRATION, train);
+        this(train.getCurrentState() == OnboardingState.EMAIL_VERIFIED
+                || train.getCurrentState() == OnboardingState.PROFILE_CREATED, train);
     }
 }

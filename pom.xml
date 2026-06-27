@@ -183,6 +183,13 @@
   </build>
   <profiles>
     <profile>
+      <id>production</id>
+      <properties>
+        <skipITs>true</skipITs>
+        <quarkus.package.type>fast-jar</quarkus.package.type>
+      </properties>
+    </profile>
+    <profile>
       <id>native</id>
       <activation>
         <property>
