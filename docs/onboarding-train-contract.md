@@ -78,9 +78,9 @@ GO_TO_LOGIN
 
 `COLLECT_PASSWORD` means onboarding has no local process for the email yet.
 `SHOW_EMAIL_VERIFICATION_PENDING` means a registration exists but identity has
-not emitted `EMAIL_VERIFIED` yet. `GO_TO_LOGIN` means email verification is
-already complete for that email; after login, the UI should use the
-authenticated train.
+not emitted `EMAIL_VERIFIED` yet. Once email verification is complete, the train
+is the source of truth and points at `PROFILE_CREATION`. `GO_TO_LOGIN` means the
+profile was created and onboarding is complete.
 
 ## Anonymous Train
 

@@ -59,7 +59,8 @@ public class DefaultOnboardingStartService implements OnboardingStartService {
     private OnboardingStartAction nextActionFor(OnboardingState currentState) {
         return switch (currentState) {
             case REGISTERED -> OnboardingStartAction.SHOW_EMAIL_VERIFICATION_PENDING;
-            case EMAIL_VERIFIED, PROFILE_CREATED -> OnboardingStartAction.GO_TO_LOGIN;
+            case EMAIL_VERIFIED -> null;
+            case PROFILE_CREATED -> OnboardingStartAction.GO_TO_LOGIN;
         };
     }
 

@@ -16,7 +16,8 @@ public class ProfileCreatedRule {
             @Fact("currentState") String currentState,
             @Fact("eventType") OnboardingEventType eventType
     ) {
-        return OnboardingState.EMAIL_VERIFIED.name().equals(currentState)
+        return (OnboardingState.REGISTERED.name().equals(currentState)
+                || OnboardingState.EMAIL_VERIFIED.name().equals(currentState))
                 && eventType == OnboardingEventType.PROFILE_CREATED;
     }
 

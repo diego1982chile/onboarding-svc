@@ -1,11 +1,14 @@
 package cl.dsoto.onboarding.events.feed;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import org.jboss.logging.Logger;
 
 import java.util.List;
 
 @ApplicationScoped
 public class EventFeedPoller {
+
+    private static final Logger LOGGER = Logger.getLogger(EventFeedPoller.class);
 
     private final EventFeedCursorStore cursorStore;
 
@@ -32,7 +35,18 @@ public class EventFeedPoller {
             }
 
             for (T item : items) {
-                itemHandler.handle(item);
+                try {
+                    itemHandler.handle(item);
+                } catch (Exception exception) {
+                    LOGGER.warnf(
+                            "Skipping event feed item from %s at cursor %s: %s: %s",
+                            source,
+                            item.cursor(),
+                            exception.getClass().getSimpleName(),
+                            exception.getMessage()
+                    );
+                    LOGGER.debug("Event feed item handling failure details", exception);
+                }
                 cursorStore.saveCursor(source, item.cursor());
                 cursor = item.cursor();
             }

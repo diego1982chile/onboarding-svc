@@ -62,6 +62,17 @@ class OnboardingEngineTest {
     }
 
     @Test
+    void shouldAdvanceRegisteredUserToProfileCreatedWhenProfileEventArrivesBeforeEmailVerifiedEvent() {
+        String username = "profile.before.email.event@example.com";
+
+        onboardingEngine.applyEvent(OnboardingEvent.userRegistered(username));
+        onboardingEngine.applyEvent(OnboardingEvent.profileCreated(username));
+        onboardingEngine.applyEvent(OnboardingEvent.emailVerified(username));
+
+        assertThat(onboardingEngine.getCurrentState(username), is(OnboardingState.PROFILE_CREATED));
+    }
+
+    @Test
     void shouldKeepStateWhenSameEventIsAppliedTwice() {
         String username = "idempotent.user@example.com";
 

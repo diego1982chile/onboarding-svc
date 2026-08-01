@@ -97,7 +97,7 @@ class DefaultOnboardingWebServiceTest {
     }
 
     @Test
-    void shouldSendVerifiedEmailToLogin() {
+    void shouldResumeVerifiedEmailAtProfileCreation() {
         String email = "resume.verified@example.com";
         onboardingEngine.applyEvent(OnboardingEvent.userRegistered(email, "resume-verified-123"));
         onboardingEngine.applyEvent(OnboardingEvent.emailVerified(email));
@@ -110,9 +110,30 @@ class DefaultOnboardingWebServiceTest {
                 .statusCode(200)
                 .body("email", is(email))
                 .body("state", is("EMAIL_VERIFIED"))
-                .body("nextAction", is("GO_TO_LOGIN"))
+                .body("nextAction", nullValue())
                 .body("train.username", nullValue())
                 .body("train.currentStep", is("PROFILE_CREATION"));
+    }
+
+    @Test
+    void shouldReturnLoginActionWhenProfileIsCreated() {
+        String email = "resume.complete@example.com";
+        onboardingEngine.applyEvent(OnboardingEvent.userRegistered(email, "resume-complete-123"));
+        onboardingEngine.applyEvent(OnboardingEvent.emailVerified(email));
+        onboardingEngine.applyEvent(OnboardingEvent.profileCreated(email));
+
+        given()
+                .contentType("application/json")
+                .body(Map.of("email", email))
+                .when().post("/api/onboarding/start")
+                .then()
+                .statusCode(200)
+                .body("email", is(email))
+                .body("state", is("PROFILE_CREATED"))
+                .body("nextAction", is("GO_TO_LOGIN"))
+                .body("train.username", nullValue())
+                .body("train.currentStep", is("PROFILE_CREATION"))
+                .body("train.steps[2].status", is("COMPLETED"));
     }
 
     @Test

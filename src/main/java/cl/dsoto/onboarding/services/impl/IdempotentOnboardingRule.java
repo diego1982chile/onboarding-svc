@@ -16,7 +16,12 @@ public class IdempotentOnboardingRule {
             @Fact("currentState") String currentState,
             @Fact("eventType") OnboardingEventType eventType
     ) {
-        return stateProducedBy(eventType).equals(currentState);
+        OnboardingState producedState = stateProducedBy(eventType);
+        OnboardingState existingState = stateFrom(currentState);
+
+        return producedState != null
+                && existingState != null
+                && producedState.ordinal() <= existingState.ordinal();
     }
 
     @Action
@@ -24,15 +29,27 @@ public class IdempotentOnboardingRule {
         facts.put("applied", true);
     }
 
-    private String stateProducedBy(OnboardingEventType eventType) {
+    private OnboardingState stateProducedBy(OnboardingEventType eventType) {
         if (eventType == null) {
-            return "";
+            return null;
         }
 
         return switch (eventType) {
-            case USER_REGISTERED -> OnboardingState.REGISTERED.name();
-            case EMAIL_VERIFIED -> OnboardingState.EMAIL_VERIFIED.name();
-            case PROFILE_CREATED -> OnboardingState.PROFILE_CREATED.name();
+            case USER_REGISTERED -> OnboardingState.REGISTERED;
+            case EMAIL_VERIFIED -> OnboardingState.EMAIL_VERIFIED;
+            case PROFILE_CREATED -> OnboardingState.PROFILE_CREATED;
         };
+    }
+
+    private OnboardingState stateFrom(String currentState) {
+        if (currentState == null || currentState.isBlank()) {
+            return null;
+        }
+
+        try {
+            return OnboardingState.valueOf(currentState);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 }

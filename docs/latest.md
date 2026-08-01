@@ -207,6 +207,8 @@ El endpoint responde `nextAction` para que el UI decida que pantalla mostrar:
 - `SHOW_EMAIL_VERIFICATION_PENDING`
 - `GO_TO_LOGIN`
 
-La decision se toma solo con la proyeccion local de `onboarding-svc`,
-alimentada por eventos/feed. No debe hacerse lookup sincronico desde
-`onboarding-svc` hacia `token-svc`.
+Cuando el correo ya esta verificado, el tren pasa a `PROFILE_CREATION` y
+`nextAction` queda vacio mientras falta crear el perfil. Cuando profile-service
+emite `PROFILE_CREATED`, `nextAction` pasa a `GO_TO_LOGIN`. La decision se toma
+solo con la proyeccion local de `onboarding-svc`, alimentada por eventos/feed. No
+debe hacerse lookup sincronico desde `onboarding-svc` hacia `token-svc`.

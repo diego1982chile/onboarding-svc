@@ -13,6 +13,7 @@ import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -82,6 +83,31 @@ class EventFeedPollerTest {
 
         verify(identityEventHandler).handle(duplicate);
         verify(cursorStore).saveCursor("token-svc", 11L);
+    }
+
+    @Test
+    void shouldAdvanceCursorAndContinueWhenItemHandlerRejectsEvent() {
+        TokenIdentityEventFeedAdapter feedClient = mock(TokenIdentityEventFeedAdapter.class);
+        IdentityEventHandler identityEventHandler = mock(IdentityEventHandler.class);
+        EventFeedCursorStore cursorStore = mock(EventFeedCursorStore.class);
+        EventFeedPoller poller = new EventFeedPoller(cursorStore);
+
+        IdentityEventFeedItem invalid = item(11L, "event-1", OnboardingEventType.PROFILE_CREATED);
+        IdentityEventFeedItem valid = item(12L, "event-2", OnboardingEventType.EMAIL_VERIFIED);
+
+        when(cursorStore.currentCursor("token-svc")).thenReturn(10L);
+        when(feedClient.getEvents(10L, 100))
+                .thenReturn(new IdentityEventFeedPage(List.of(invalid, valid), 12L, false));
+        doThrow(new IllegalStateException("invalid transition"))
+                .when(identityEventHandler)
+                .handle(invalid);
+
+        poller.pollAvailablePages("token-svc", 100, feedClient, identityEventHandler::handle);
+
+        verify(identityEventHandler).handle(invalid);
+        verify(identityEventHandler).handle(valid);
+        verify(cursorStore).saveCursor("token-svc", 11L);
+        verify(cursorStore).saveCursor("token-svc", 12L);
     }
 
     private IdentityEventFeedItem item(Long cursor, String eventId, OnboardingEventType eventType) {
